@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('fixcopy', ROOT / 'fixcopy.py')
@@ -16,7 +17,7 @@ SPEC.loader.exec_module(fixcopy)
 
 class InjectorTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(dir=ROOT)
+        self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.js = self.root / 'stub.js'
@@ -29,6 +30,152 @@ class InjectorTest(unittest.TestCase):
 
     def inject(self, *args):
         return self.cli('inject', *args, '--script', self.js)
+
+    def test_preflight_leaves_all_inputs_untouched(self):
+        source = self.root / 'site'
+        source.mkdir()
+        good = source / 'a.html'
+        original = b'<meta name="fixcopy">Good'
+        good.write_bytes(original)
+        (source / 'z.html').write_bytes(b'\xff')
+        result = self.inject(source, '--in-place')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(good.read_bytes(), original)
+        out = self.root / 'copy'
+        self.assertEqual(self.inject(source, '-o', out).returncode, 2)
+        self.assertFalse(out.exists())
+
+    def test_atomic_replace_and_staging_failure(self):
+        other = self.root / 'other.html'
+        other.write_bytes(b'Other')
+        before = self.page.read_bytes()
+        real_replace = fixcopy.os.replace
+        replacements = []
+
+        def replace(source, target):
+            self.assertEqual(Path(source).parent, Path(target).parent)
+            replacements.append(target)
+            return real_replace(source, target)
+
+        with mock.patch.object(fixcopy.os, 'replace', side_effect=replace):
+            self.assertEqual(fixcopy.main(['inject', str(self.page), '--in-place', '--script', str(self.js)]), 0)
+        self.assertEqual(replacements, [self.page])
+        self.page.write_bytes(before)
+        real_temp = fixcopy.tempfile.NamedTemporaryFile
+        calls = 0
+
+        def stage(**kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise OSError('staging failed')
+            return real_temp(**kwargs)
+
+        with mock.patch.object(fixcopy.tempfile, 'NamedTemporaryFile', side_effect=stage):
+            self.assertEqual(fixcopy.main(['inject', str(self.page), str(other), '--in-place', '--script', str(self.js)]), 2)
+        self.assertEqual(self.page.read_bytes(), before)
+        self.assertEqual(other.read_bytes(), b'Other')
+        self.assertEqual(list(self.root.glob('.fixcopy-*')), [])
+
+    def test_check_without_output(self):
+        original = self.page.read_bytes()
+        self.assertEqual(self.inject(self.page, '--check').returncode, 1)
+        self.assertEqual(self.page.read_bytes(), original)
+        source = self.root / 'site'
+        source.mkdir()
+        page = source / 'a.html'
+        page.write_text('<meta name="fixcopy">')
+        before = page.read_bytes()
+        self.assertEqual(self.inject(source, '--check').returncode, 1)
+        self.assertEqual(page.read_bytes(), before)
+        self.assertEqual(list(source.iterdir()), [page])
+
+    def test_existing_outputs(self):
+        out = self.root / 'out.html'
+        out.write_text('Old')
+        self.assertEqual(self.inject(self.page, '-o', out).returncode, 0)
+        self.assertIn(b'data-fixcopy', out.read_bytes())
+        source = self.root / 'site'
+        source.mkdir()
+        (source / 'a.html').write_text('<meta name="fixcopy">')
+        destination = self.root / 'copy'
+        destination.mkdir()
+        keep = destination / 'keep'
+        keep.write_bytes(b'Keep')
+        result = self.inject(source, '-o', destination)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('choose a new directory', result.stderr)
+        self.assertEqual(list(destination.iterdir()), [keep])
+        keep.unlink()
+        self.assertEqual(self.inject(source, '-o', destination).returncode, 0)
+
+    def test_symlinks(self):
+        link = self.root / 'link.html'
+        link.symlink_to(self.page)
+        original = self.page.read_bytes()
+        self.assertEqual(self.inject(link, '--in-place').returncode, 2)
+        self.assertEqual(self.inject(self.page, '-o', link).returncode, 2)
+        self.assertEqual(self.page.read_bytes(), original)
+        source = self.root / 'site'
+        source.mkdir()
+        (source / 'file.html').symlink_to(self.page)
+        (source / 'folder').symlink_to(self.root, target_is_directory=True)
+        out = self.root / 'copy'
+        result = self.inject(source, '-o', out)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count('skipped (symlink)'), 2)
+        self.assertEqual(list(out.iterdir()), [])
+        link.unlink()
+        link.symlink_to(self.root / 'missing')
+        self.assertEqual(self.inject(self.page, '-o', link).returncode, 2)
+
+    def test_csp_content_span_preserved(self):
+        for quote in ("'", '"', ''):
+            policy = 'script-src https://example.test?a=1&amp;b=2' if quote else 'script-src'
+            prefix = '<META id="csp" CONTENT='
+            suffix = ' HTTP-EQUIV="Content-Security-Policy" data-extra="keep">'
+            source = prefix + quote + policy + quote + suffix
+            result = fixcopy.inject_text(source, 'x')
+            rewritten = fixcopy.edit_policy(html.unescape(policy), fixcopy.script_hash('x'))
+            used = quote or '"'
+            escaped = rewritten.replace('&', '&amp;').replace(used, '&#39;' if used == "'" else '&quot;')
+            self.assertTrue(result.startswith(prefix + used + escaped + used + suffix), result)
+
+    def test_old_hash_scoped_to_receiving_directive(self):
+        old = fixcopy.script_hash('old')
+        for policy in (f"script-src 'unsafe-inline' {old}; style-src {old}",
+                       f"default-src {old}; style-src {old}",
+                       f"script-src {old}; script-src-elem 'self'; style-src {old}"):
+            source = f'<meta http-equiv="Content-Security-Policy" content="{policy}"><script data-fixcopy>old</script>'
+            result = fixcopy.Document(fixcopy.inject_text(source, 'new')).policies[0][2]
+            self.assertIn('style-src ' + old, result)
+            self.assertIn(fixcopy.script_hash('new'), result)
+            if "'unsafe-inline'" in policy:
+                self.assertIn("script-src 'unsafe-inline' " + fixcopy.script_hash('new'), result)
+            if policy.startswith('default-src'):
+                self.assertIn('default-src ' + old, result)
+
+    def test_unterminated_owned_script_names_file(self):
+        self.page.write_text('<script data-fixcopy>old')
+        before = self.page.read_bytes()
+        result = self.inject(self.page, '--in-place')
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(str(self.page), result.stderr)
+        self.assertEqual(self.page.read_bytes(), before)
+
+    def test_comment_opener_script_rejected(self):
+        self.js.write_text('<!--<script>')
+        self.assertEqual(self.inject(self.page, '--in-place').returncode, 2)
+
+    def test_help_documents_arguments(self):
+        result = self.cli('inject', '--help')
+        for phrase in ('<meta name="fixcopy">', '--all', 'named file', 'next to fixcopy.py', 'overwrites'):
+            self.assertIn(phrase, ' '.join(result.stdout.split()))
+        parser_help = self.cli('hash', '--help').stdout
+        self.assertIn('next to fixcopy.py', parser_help)
+
+    def test_system_temp_location(self):
+        self.assertNotIn(ROOT, self.root.parents)
 
     def test_policy_cases(self):
         cases = [("default-src 'none'", True), ("script-src 'unsafe-inline'", False),
