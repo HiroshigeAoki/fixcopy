@@ -1,0 +1,547 @@
+// Wording edits, saved locally and shared as a plain-text report.
+(function () {
+  if (window.__fixcopy) return;
+  window.__fixcopy = true;
+  var STRINGS = {
+  "ja": {
+    "startIdle": "✎ 文言を直す",
+    "start": "文言を直す",
+    "close": "閉じる",
+    "stepOne": "① 直したい文字をタップして書き換える",
+    "stepDestination": "② 「直した内容を送る」を押す。",
+    "stepTwo": "② 「直した内容を送る」を押して、依頼してきた人へのチャットやメールに貼る",
+    "guide": "押さないと相手には届きません。",
+    "continue": "続けて直す",
+    "reset": "元に戻す",
+    "sendLabel": "直した内容を送る",
+    "reportLabel": "送る文章",
+    "copyAgain": "もう一度コピー",
+    "share": "アプリを選んで送る",
+    "manualDone": "コピーできた",
+    "stop": "直すのを終える",
+    "empty": "まだ直した箇所はありません",
+    "pending": "{n} か所を直しました ・ まだ送っていません",
+    "sharedStatus": "{n} か所 ・ 共有済みです",
+    "copiedStatus": "{n} か所 ・ 送る文章はコピー済みです",
+    "sendCount": "直した内容を送る（{n} か所）",
+    "open": "文言を直すツールを開く",
+    "unsent": "（未送信 {n} か所）",
+    "where": "依頼してきた人へのチャットやメールに貼り付けて送ってください。",
+    "paste": "貼り付けて送ってください。",
+    "sharedNote": "共有しました。送信まで済ませてください。",
+    "copiedNote": "✓ コピーしました\nこのあと、{paste}\n貼り付けて送るまで、相手には届きません。",
+    "cancelled": "送信を取りやめました。コピーして貼り付けることもできます。",
+    "manualNote": "下の文章を長押し（パソコンは全選択）してコピーし、{paste}",
+    "copy": "コピーする",
+    "confirm": "直した文言をすべて元に戻します。よろしいですか？",
+    "reportTitle": "{title} 文言の直し",
+    "before": "元",
+    "after": "   新：{text}",
+    "occurrence": "（{index}か所目／全{total}か所{heading}）",
+    "heading": "・見出し「{heading}」の下",
+    "separator": "：",
+    "noChanges": "（直した箇所はありません）",
+    "figure": "（図）",
+    "svgLabel": "図の文字を直す",
+    "lineSeparator": " ／ ",
+    "destinationEnd": "。",
+    "iconClose": "×",
+    "iconEdit": "✎"
+  },
+  "en": {
+    "startIdle": "✎ Fix wording",
+    "start": "Fix wording",
+    "close": "Close",
+    "stepOne": "1. Tap the words you want to change and rewrite them.",
+    "stepDestination": "2. Tap “Send your changes”. ",
+    "stepTwo": "2. Tap “Send your changes”, then paste them into a chat or email to the author.",
+    "guide": "Nothing reaches the author until you paste and send it.",
+    "continue": "Keep editing",
+    "reset": "Reset changes",
+    "sendLabel": "Send your changes",
+    "reportLabel": "Your changes",
+    "copyAgain": "Copy again",
+    "share": "Choose an app to share",
+    "manualDone": "I copied it",
+    "stop": "Finish editing",
+    "empty": "No changes yet",
+    "pending": "Changes: {n} · Not sent yet",
+    "sharedStatus": "Changes: {n} · Shared",
+    "copiedStatus": "Changes: {n} · Copied",
+    "sendCount": "Send your changes ({n})",
+    "open": "Open wording editor",
+    "unsent": " (unsent: {n})",
+    "where": "Paste and send them in a chat or email to the author.",
+    "paste": "Paste and send them. ",
+    "sharedNote": "Shared. Please finish sending in the app. ",
+    "copiedNote": "✓ Copied\n{paste}\nNothing reaches the author until you paste and send it.",
+    "cancelled": "Sharing cancelled. You can copy and paste your changes instead.",
+    "manualNote": "Select the text below (touch and hold on a phone), copy it, then send it. {paste}",
+    "copy": "Copy",
+    "confirm": "Reset all your wording changes?",
+    "reportTitle": "{title} — Wording changes",
+    "before": "Before",
+    "after": "   After: {text}",
+    "occurrence": " (occurrence {index} of {total}{heading})",
+    "heading": "; under “{heading}”",
+    "separator": ": ",
+    "noChanges": "(No changes)",
+    "figure": "(figure) ",
+    "svgLabel": "Edit figure label",
+    "lineSeparator": " / ",
+    "destinationEnd": ".",
+    "iconClose": "×",
+    "iconEdit": "✎"
+  }
+};
+  function boot() {
+  var meta = document.querySelector('meta[name="fixcopy"]');
+  var config = {};
+  try {
+    var parsed = JSON.parse(meta ? meta.getAttribute("content") || "" : "");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) config = parsed;
+  } catch (e) { /* Use defaults for non-JSON content. */ }
+  var lang = config.lang;
+  if (lang !== "ja" && lang !== "en") {
+    var pageLang = document.documentElement.getAttribute("lang") || navigator.language || "";
+    lang = /^ja/i.test(pageLang) ? "ja" : "en";
+  }
+  var strings = STRINGS[lang];
+  function t(key, values) {
+    return strings[key].replace(/\{(\w+)\}/g, function (match, name) {
+      return values && values[name] !== undefined ? values[name] : match;
+    });
+  }
+  var KEY = "fixcopy:" + location.pathname;
+  var SKIP = "script, style, noscript, textarea, select, #fixcopy-bar, #fixcopy-panel, #fixcopy-handle, #fixcopy-svg-input, [data-no-edit]";
+  if (typeof config.skip === "string" && config.skip.trim()) {
+    try {
+      document.querySelector(config.skip);
+      SKIP += ", " + config.skip;
+    } catch (e) { /* Ignore invalid selectors. */ }
+  }
+  var title = typeof config.title === "string" ? config.title : document.title || location.pathname;
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { /* Storage is optional. */ }
+  // Closed: the bar is folded into a small handle so it does not cover the page.
+  var closed = !!(saved && saved.v === 1 && saved.closed === true);
+
+  function flat(s) { return s.replace(/[ \t\n\r\f]+/g, " "); }
+  function collapses(node) { return /^(normal|nowrap)$/.test(getComputedStyle(node).whiteSpace); }
+  function read(node, collapse) {
+    var out = "";
+    Array.prototype.forEach.call(node.childNodes, function (c) {
+      out += c.nodeType === 3 ? (collapse ? flat(c.data) : c.data) : c.nodeName === "BR" ? "\n" : c.textContent;
+    });
+    return out.replace(/\u00a0/g, " ");
+  }
+  // Line breaks come from <br> only; spaces around them are layout, not wording.
+  var SVG = "http://www.w3.org/2000/svg";
+  function isSvg(node) { return node.namespaceURI === SVG; }
+  function trimLines(s) { return s.replace(/ *\n */g, "\n").trim(); }
+  function text(node) {
+    return isSvg(node) ? node.textContent.replace(/\s+/g, " ").trim() : trimLines(read(node));
+  }
+  function write(node, text) {
+    if (isSvg(node)) { node.textContent = text.replace(/\s*\n\s*/g, " "); return; }
+    node.textContent = "";
+    text.split("\n").forEach(function (line, i) {
+      if (i) node.appendChild(document.createElement("br"));
+      node.appendChild(document.createTextNode(line));
+    });
+  }
+
+  // A label's edge spaces separate it from its neighbours (tspans), so only the trimmed part is replaced.
+  function put(it, value) {
+    if (!it.svg) write(it.node, value);
+    else if (value === it.original) it.node.textContent = it.raw;
+    else write(it.node, it.raw.match(/^\s*/)[0] + value + it.raw.match(/\s*$/)[0]);
+  }
+  function isLabel(node) {
+    return (node.localName === "text" || (node.localName === "tspan" && node.closest("text"))) &&
+      !node.closest("defs,symbol,clipPath,mask,pattern,marker") &&
+      !Array.prototype.some.call(node.childNodes, function (c) { return c.nodeType !== 3; });
+  }
+
+  var items = [];
+  var headings = [];
+  var totals = [Object.create(null), Object.create(null)];
+  Array.prototype.forEach.call(document.body.querySelectorAll("*"), function (node) {
+    if (/^H[1-6]$/.test(node.nodeName) && !node.closest("#fixcopy-bar, #fixcopy-panel")) {
+      headings.push(node);
+    }
+    if (node.closest(SKIP)) return;
+    var hasText = false, onlyText = true;
+    Array.prototype.forEach.call(node.childNodes, function (c) {
+      if (c.nodeType === 3) { if (c.data.trim()) hasText = true; }
+      else if (c.nodeType === 1 && c.nodeName !== "BR") onlyText = false;
+    });
+    if (!hasText || !onlyText) return;
+    var svg = isSvg(node);
+    var collapse = collapses(node);
+    if (svg && !isLabel(node)) return;
+    // Source line wraps are not line breaks: collapse them (rendering stays the same) so that
+    // they are not turned into <br> when the element is rewritten.
+    if (!svg && collapse) {
+      Array.prototype.forEach.call(node.childNodes, function (c) {
+        if (c.nodeType !== 3) return;
+        var f = flat(c.data);
+        if (f !== c.data) c.data = f;
+      });
+    }
+    var original = text(node);
+    var counts = totals[svg ? 1 : 0];
+    counts[original] = (counts[original] || 0) + 1;
+    var h = headings.length - 1;
+    while (h >= 0 && headings[h].contains(node)) h--;
+    var heading = h >= 0 ? headings[h] : null;
+    var hint = heading ? heading.textContent.replace(/\s+/g, " ").trim() : "";
+    if (hint.length > 30) hint = hint.slice(0, 30) + "…";
+    items.push({ node: node, original: original, index: counts[original], heading: hint, svg: svg, raw: svg ? node.textContent : "" });
+  });
+  items.forEach(function (it) {
+    it.total = totals[it.svg ? 1 : 0][it.original];
+    if (!saved || saved.v !== 1 || !Array.isArray(saved.edits)) return;
+    saved.edits.some(function (edit) {
+      if (edit && edit.o === it.original && !!edit.s === it.svg && edit.i === it.index && edit.n === it.total && typeof edit.t === "string") {
+        // Saved text is trimmed; keep the element's own edge spaces (they separate it from its neighbours).
+        var raw = read(it.node);
+        if (it.svg) put(it, edit.t);
+        else write(it.node, raw.match(/^ */)[0] + edit.t + raw.match(/ *$/)[0]);
+        return true;
+      }
+      return false;
+    });
+  });
+
+  function changes() {
+    return items.filter(function (it) { return text(it.node) !== it.original; });
+  }
+  function persist() {
+    var changed = changes();
+    var map = { v: 1, closed: closed, edits: changed.map(function (it) {
+      var edit = { o: it.original, i: it.index, n: it.total, t: text(it.node) };
+      if (it.svg) edit.s = 1;
+      return edit;
+    }) };
+    if (sent) map.sent = sent;
+    try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) { /* private mode: edits last until reload */ }
+    render();
+  }
+  function report() {
+    var one = function (s) { return s.replace(/\n/g, t("lineSeparator")); };
+    var lines = [t("reportTitle", { title: title })];
+    changes().forEach(function (it, i) {
+      var label = (it.svg ? t("figure") : "") + t("before");
+      if (it.total > 1) {
+        label += t("occurrence", { index: it.index, total: it.total,
+          heading: it.heading ? t("heading", { heading: it.heading }) : "" });
+      }
+      lines.push("", (i + 1) + ". " + label + t("separator") + one(it.original), t("after", { text: one(text(it.node)) }));
+    });
+    if (lines.length === 1) lines.push("", t("noChanges"));
+    return lines.join("\n");
+  }
+
+  var sent = saved && saved.v === 1 && typeof saved.sent === "string" ? saved.sent : "";
+  var destination = typeof config.send_to === "string" ? config.send_to.replace(/\s+/g, " ").trim() : "";
+  if (destination.length > 60) destination = destination.slice(0, 60) + "…";
+  if (destination && !/[。.!?！？]$/.test(destination)) destination += t("destinationEnd");
+  var editing = false, busy = false, sheetText = "", sentMode = "copied";
+  function hash(value) {
+    var h = 5381;
+    for (var i = 0; i < value.length; i++) h = ((h << 5) + h) ^ value.charCodeAt(i);
+    return (h >>> 0).toString(36);
+  }
+  function unsent() { return changes().length > 0 && hash(report()) !== sent; }
+  var css = document.createElement("style");
+  css.textContent =
+    "#fixcopy-svg-input,#fixcopy-bar,#fixcopy-panel,#fixcopy-handle{--surface:#fff;--ink:#191d22;--edge:rgba(25,29,34,.24);--accent:#0b6e66;--accent-ink:#fff;--amber:#b45309;--muted:#535b65;box-sizing:border-box;position:fixed;right:14px;bottom:14px;z-index:2147483000;background:var(--surface);color:var(--ink);border:1px solid var(--edge);box-shadow:0 4px 24px rgba(0,0,0,.28);font:500 15px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif}" +
+    "#fixcopy-bar,#fixcopy-panel{width:min(440px,calc(100vw - 28px));padding:12px;border-radius:16px;opacity:0;transform:translateY(8px);transition:opacity 200ms cubic-bezier(.23,1,.32,1),transform 200ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixcopy-bar[data-visible],#fixcopy-panel[data-visible]{opacity:1;transform:translateY(0)}" +
+    "#fixcopy-bar button,#fixcopy-panel button,#fixcopy-handle{box-sizing:border-box;min-width:44px;min-height:44px;font:inherit;border:0;border-radius:10px;background:transparent;color:inherit;padding:8px 12px;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform 120ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixcopy-bar button:active,#fixcopy-panel button:active,#fixcopy-handle:active{transform:scale(.97)}" +
+    "#fixcopy-bar button:focus-visible,#fixcopy-panel button:focus-visible,#fixcopy-panel textarea:focus-visible,#fixcopy-handle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}" +
+    "#fixcopy-bar [hidden],#fixcopy-panel [hidden],#fixcopy-bar[hidden],#fixcopy-panel[hidden],#fixcopy-handle[hidden]{display:none!important}" +
+    "#fixcopy-header,#fixcopy-secondary,#fixcopy-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}#fixcopy-header{flex-wrap:nowrap}#fixcopy-title{font-weight:600}" +
+    "#fixcopy-guide{margin:4px 0 12px}#fixcopy-guide strong{display:block;margin-top:6px}#fixcopy-status{color:var(--muted);margin:8px 0;transition:opacity 200ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixcopy-status[data-state=unsent]{color:var(--amber)}#fixcopy-status[data-state=sent]{color:var(--accent)}#fixcopy-status[data-state=unsent]:before{content:'● ';}#fixcopy-status[data-state=sent]:before{content:'✓ ';}" +
+    "#fixcopy-bar #fixcopy-send{width:100%;min-height:48px;background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:600}#fixcopy-bar #fixcopy-send[aria-disabled=true]{background:var(--edge);color:var(--muted)}" +
+    "#fixcopy-bar[data-idle]{width:auto;height:44px;padding:0;border-radius:999px}#fixcopy-bar[data-idle] #fixcopy-title{padding:0 12px;font-weight:500}" +
+    "#fixcopy-handle{width:48px;height:48px;padding:0;border-radius:50%;opacity:1;background:var(--accent);color:var(--accent-ink);font-size:20px;border-color:var(--surface)}#fixcopy-bar[data-sheet]{display:none}#fixcopy-badge{position:absolute;right:-6px;top:-8px;min-width:22px;padding:1px 4px;border-radius:12px;background:var(--amber);color:var(--surface);font-size:12px}" +
+    "#fixcopy-panel{overflow-y:auto;overscroll-behavior:contain}#fixcopy-note{white-space:pre-line;overflow-wrap:anywhere}#fixcopy-note[data-mode=copied]:first-line{font-size:20px;font-weight:600}" +
+    "#fixcopy-panel textarea{box-sizing:border-box;display:block;width:100%;font:400 16px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif;margin:12px 0;padding:8px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical;overflow:auto}" +
+    "body.fixcopy-editing [data-fixcopy-editable]{outline:1px dashed #e0a200;outline-offset:3px}body.fixcopy-editing [data-fixcopy-editable]:focus{outline:2px solid #e0a200;background:rgba(224,162,0,.14)}body.fixcopy-editing [data-fixcopy-changed]{box-shadow:inset 0 -3px 0 #e0a200}body.fixcopy-show-changes [data-fixcopy-changed]{background:rgba(255,214,10,.55);outline:2px solid #e0a200;outline-offset:2px;color:#000}" +
+    "@media(prefers-color-scheme:dark){#fixcopy-svg-input,#fixcopy-bar,#fixcopy-panel,#fixcopy-handle{--surface:#1f2329;--ink:#f2f4f6;--edge:rgba(242,244,246,.3);--accent:#35b3a7;--accent-ink:#191d22;--amber:#fbbf24;--muted:#bdc4cd}}" +
+    "@media(hover:hover) and (pointer:fine){#fixcopy-bar button:hover,#fixcopy-panel button:hover,#fixcopy-handle:hover{box-shadow:inset 0 0 0 2px var(--accent)}body.fixcopy-editing [data-fixcopy-editable]{cursor:text}}" +
+    "@media(max-width:600px){#fixcopy-bar:not([data-idle]),#fixcopy-panel{right:0;bottom:0;width:100%;border-radius:16px 16px 0 0;padding-bottom:max(12px,env(safe-area-inset-bottom,0px));padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}}" +
+    ".fixcopy-box{fill:none;stroke:#e0a200;stroke-dasharray:3 2;vector-effect:non-scaling-stroke;pointer-events:none}.fixcopy-box.changed{fill:rgba(224,162,0,.16);stroke-dasharray:none}" +
+    "#fixcopy-svg-input{position:absolute;right:auto;bottom:auto;z-index:2147482999;font-size:16px;min-height:44px;padding:8px;border:2px solid #e0a200;border-radius:8px;margin:0}" +
+    "@media print{.fixcopy-box,#fixcopy-svg-input{display:none!important}}" +
+    "@media(prefers-reduced-motion:reduce){#fixcopy-bar,#fixcopy-panel,#fixcopy-bar button,#fixcopy-panel button,#fixcopy-handle,#fixcopy-status{transition:none}}";
+  document.head.appendChild(css);
+  function element(tag, id, parent, label) {
+    var node = document.createElement(tag); if (id) node.id = "fixcopy-" + id;
+    if (label) node.textContent = label; if (parent) parent.appendChild(node); return node;
+  }
+  function button(label, parent, id) { var b = element("button", id, parent, label); b.type = "button"; return b; }
+  var bar = element("div", "bar", document.body);
+  var header = element("div", "header", bar);
+  var start = button(t("startIdle"), header, "title");
+  var close = button(t("iconClose"), header); close.setAttribute("aria-label", t("close"));
+  var content = element("div", "content", bar);
+  var guide = element("div", "guide", content);
+  element("div", "", guide, t("stepOne"));
+  element("div", "", guide, destination ? t("stepDestination") + destination : t("stepTwo"));
+  element("strong", "", guide, t("guide"));
+  var status = element("div", "status", content); status.setAttribute("role", "status");
+  var send = button("", content, "send");
+  var secondary = element("div", "secondary", content);
+  var toggle = button(t("continue"), secondary);
+  var reset = button(t("reset"), secondary);
+  var handle = button(t("iconEdit"), document.body, "handle");
+  var badge = element("span", "badge", handle); badge.setAttribute("aria-hidden", "true");
+  var panel = element("div", "panel", document.body); panel.hidden = true;
+  panel.setAttribute("role", "region"); panel.setAttribute("aria-label", t("sendLabel"));
+  var note = element("div", "note", panel); note.setAttribute("role", "status");
+  var area = element("textarea", "", panel); area.readOnly = true; area.rows = 5; area.setAttribute("aria-label", t("reportLabel"));
+  var actions = element("div", "actions", panel);
+  var again = button(t("copyAgain"), actions);
+  var share = button(t("share"), actions); try { share.hidden = typeof navigator.share !== "function"; } catch (e) { share.hidden = true; }
+  var manual = button(t("manualDone"), actions); manual.hidden = true;
+  var dismiss = button(t("close"), actions);
+  var spacer = element("div", "spacer"); spacer.setAttribute("aria-hidden", "true");
+  function reveal(node) {
+    if (!node.hidden && node.hasAttribute("data-visible")) return;
+    node.hidden = false; node.removeAttribute("data-visible");
+    void node.offsetHeight; node.setAttribute("data-visible", "");
+  }
+  function layout() {
+    var phone = window.matchMedia("(max-width:600px)").matches;
+    var open = !closed && (editing || changes().length > 0);
+    if (phone && open && panel.hidden) {
+      if (!spacer.parentNode) document.body.appendChild(spacer);
+      spacer.style.height = bar.offsetHeight + "px";
+    } else if (spacer.parentNode) spacer.parentNode.removeChild(spacer);
+    panel.style.maxHeight = Math.max(80, window.innerHeight - 28) + "px";
+  }
+  function render() {
+    var n = changes().length, pending = n && unsent(), idle = !editing && !n;
+    bar.hidden = closed; handle.hidden = !closed;
+    if (idle) bar.setAttribute("data-idle", ""); else bar.removeAttribute("data-idle");
+    start.textContent = idle ? t("startIdle") : t("start");
+    content.hidden = idle; guide.hidden = !editing || n > 0; reset.hidden = !n;
+    toggle.textContent = editing ? t("stop") : t("continue");
+    toggle.setAttribute("aria-pressed", editing ? "true" : "false");
+    status.textContent = !n ? t("empty") : pending ? t("pending", { n: n }) : t(sentMode === "shared" ? "sharedStatus" : "copiedStatus", { n: n });
+    status.setAttribute("data-state", !n ? "empty" : pending ? "unsent" : "sent");
+    send.textContent = t("sendCount", { n: n });
+    send.setAttribute("aria-disabled", !n ? "true" : "false");
+    badge.hidden = !pending; badge.textContent = n;
+    handle.setAttribute("aria-label", t("open") + (pending ? t("unsent", { n: n }) : ""));
+    if (!closed) reveal(bar); else bar.removeAttribute("data-visible");
+    layout();
+  }
+  // The box exists while editing, or while the label is changed; it is rebuilt on every call
+  // because its size follows the label's current text and layout.
+  function markSvg(it, changed) {
+    if (it.box) { it.box.remove(); it.box = null; }
+    if (!editing && !changed) return;
+    try {
+      var b = it.node.getBBox();
+      var anchor = it.node.localName === "text" ? it.node : it.node.closest("text");
+      // No box for a label that is not rendered, or that a CSS transform moves away from its bounding box.
+      if (![b.x, b.y, b.width, b.height].every(isFinite) || (!b.width && !b.height) ||
+          (!anchor.hasAttribute("transform") && getComputedStyle(anchor).transform !== "none")) return;
+      var box = document.createElementNS(SVG, "rect");
+      box.setAttribute("class", "fixcopy-box" + (changed ? " changed" : ""));
+      box.setAttribute("x", b.x - 4); box.setAttribute("y", b.y - 2);
+      box.setAttribute("width", Math.max(24, b.width + 8)); box.setAttribute("height", Math.max(12, b.height + 4));
+      box.setAttribute("rx", "3");
+      if (anchor.hasAttribute("transform")) box.setAttribute("transform", anchor.getAttribute("transform"));
+      anchor.parentNode.insertBefore(box, anchor); it.box = box;
+    } catch (e) { /* getBBox can throw for a label that is not rendered. */ }
+  }
+  function mark() {
+    items.forEach(function (it) {
+      var changed = text(it.node) !== it.original;
+      if (it.svg) markSvg(it, changed);
+      if (changed) it.node.setAttribute("data-fixcopy-changed", "");
+      else it.node.removeAttribute("data-fixcopy-changed");
+    });
+  }
+  var svgInput = null, svgItem = null;
+  // Safari ends the composition before the Enter that confirmed it; that keydown carries keyCode 229.
+  function composing(e) { return e.isComposing || e.keyCode === 229; }
+  function placeSvg() {
+    if (!svgInput) return;
+    var r = svgItem.node.getBoundingClientRect();
+    var viewport = document.documentElement.clientWidth;
+    var width = Math.max(0, Math.min(Math.max(svgInput.value.length * 16.5 + 44, r.width + 44, 220), viewport - 16));
+    svgInput.style.width = width + "px";
+    // Measure where left/top 0 puts the input: its containing block depends on the page's own layout.
+    svgInput.style.left = svgInput.style.top = "0px";
+    var zero = svgInput.getBoundingClientRect();
+    var left = Math.max(8, Math.min(r.left + (r.width - width) / 2, viewport - width - 8));
+    svgInput.style.left = left - zero.left + "px";
+    svgInput.style.top = r.top + (r.height - zero.height) / 2 - zero.top + "px";
+  }
+  function finishSvg(cancel, focus) {
+    if (!svgInput) return;
+    var input = svgInput, it = svgItem;
+    var value = input.value.replace(/\s*\n\s*/g, " ").trim();
+    svgInput = null; svgItem = null;
+    input.remove();
+    if (!cancel && value && value !== text(it.node)) put(it, value);
+    hideSheet(); persist(); mark();
+    if (focus) it.node.focus();
+  }
+  function openSvg(it) {
+    finishSvg(false, false);
+    svgItem = it; svgInput = element("input", "svg-input", document.body);
+    svgInput.type = "text"; svgInput.setAttribute("aria-label", t("svgLabel"));
+    svgInput.value = text(it.node);
+    svgInput.addEventListener("input", placeSvg);
+    svgInput.addEventListener("blur", function () { finishSvg(false, false); });
+    svgInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !composing(e)) { e.preventDefault(); finishSvg(false, true); }
+      else if (e.key === "Escape") { e.preventDefault(); finishSvg(true, true); }
+    });
+    placeSvg(); svgInput.focus(); svgInput.select();
+  }
+  items.forEach(function (it) {
+    if (!it.svg) return;
+    it.node.addEventListener("click", function () { if (editing) openSvg(it); });
+    it.node.addEventListener("keydown", function (e) {
+      if (editing && (e.key === " " || (e.key === "Enter" && !composing(e)))) { e.preventDefault(); openSvg(it); }
+    });
+  });
+  function setEditing(on) {
+    if (!on) finishSvg(false, false);
+    editing = on;
+    document.body.classList.toggle("fixcopy-editing", on);
+    items.forEach(function (it) {
+      // SVG labels are not contenteditable; they open the floating input instead.
+      var attrs = it.svg ? { tabindex: "0", role: "button" } : { contenteditable: "plaintext-only" };
+      attrs["data-fixcopy-editable"] = "";
+      // The page's own tabindex and role on a label come back when editing ends.
+      if (on && it.svg) it.own = { tabindex: it.node.getAttribute("tabindex"), role: it.node.getAttribute("role") };
+      if (!on && it.svg && !it.own) return;
+      Object.keys(attrs).forEach(function (name) {
+        if (on) it.node.setAttribute(name, attrs[name]);
+        else if (it.own && it.own[name] != null) it.node.setAttribute(name, it.own[name]);
+        else it.node.removeAttribute(name);
+      });
+    });
+    mark(); render();
+  }
+  function hideSheet(restoreFocus) {
+    var wasOpen = !panel.hidden;
+    bar.removeAttribute("data-sheet"); panel.hidden = true; panel.removeAttribute("data-visible");
+    document.body.classList.remove("fixcopy-show-changes"); render();
+    if (wasOpen && restoreFocus === true) send.focus();
+  }
+  function showSheet(value) {
+    sheetText = value; area.value = value; bar.setAttribute("data-sheet", ""); reveal(panel);
+    document.body.classList.add("fixcopy-show-changes"); mark(); layout();
+    var changed = changes();
+    if (changed.length) changed[0].node.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+  }
+  // A share or copy can settle after the user edited again or folded the bar; its sheet must not open then.
+  function stale(value) { return closed || report() !== value; }
+  function result(value, mode) {
+    busy = false;
+    // Record the hand-off even when stale: the hash only matches if the text comes back to this exact report.
+    if (mode === "copied" || mode === "shared") { sent = hash(value); sentMode = mode; persist(); }
+    if (stale(value)) { render(); return; }
+    note.setAttribute("data-mode", mode);
+    var where = t("where");
+    var paste = destination ? t("paste") + destination : where;
+    note.textContent = mode === "shared" ? t("sharedNote") + (destination || where) :
+      mode === "copied" ? t("copiedNote", { paste: paste }) :
+      mode === "offer" ? t("cancelled") :
+      t("manualNote", { paste: paste });
+    manual.hidden = mode !== "manual";
+    again.textContent = mode === "copied" ? t("copyAgain") : t("copy");
+    showSheet(value); render();
+    if (mode === "manual") pick();
+    else again.focus();
+  }
+  // iOS Safari ignores select() on a read-only textarea; the explicit range works there too.
+  function pick() { area.focus(); area.select(); try { area.setSelectionRange(0, area.value.length); } catch (e) { /* select() already ran */ } }
+  function copyFallback(value) {
+    // Legacy copy needs a visible, selected textarea, including after an async rejection.
+    if (stale(value)) { busy = false; render(); return; }
+    showSheet(value); pick();
+    var copied = false;
+    try { copied = document.execCommand("copy"); } catch (e) { /* Offer manual copy. */ }
+    result(value, copied ? "copied" : "manual");
+  }
+  function copyReport(value) {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        navigator.clipboard.writeText(value).then(function () { result(value, "copied"); }, function () { copyFallback(value); });
+      } else copyFallback(value);
+    } catch (e) { copyFallback(value); }
+  }
+  function shareReport(value) {
+    try {
+      if (typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ text: value }))) {
+        navigator.share({ title: title, text: value }).then(function () { result(value, "shared"); }, function (e) {
+          if (e && e.name === "AbortError") result(value, "offer"); else copyReport(value);
+        });
+        return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") { result(value, "offer"); return; } }
+    copyReport(value);
+  }
+  start.addEventListener("click", function () { if (!editing) setEditing(true); });
+  toggle.addEventListener("click", function () { setEditing(!editing); });
+  document.addEventListener("input", function (e) {
+    if (e.target.hasAttribute && e.target.hasAttribute("data-fixcopy-editable")) { hideSheet(); persist(); mark(); }
+  });
+  document.addEventListener("focusout", function (e) {
+    var it = items.filter(function (x) { return x.node === e.target; })[0];
+    if (it && !it.svg && document.body.classList.contains("fixcopy-editing")) { write(it.node, read(it.node).replace(/\n+$/, "")); persist(); mark(); }
+  });
+  // Links and buttons must not fire while their label is being edited.
+  document.addEventListener("click", function (e) {
+    if (document.body.classList.contains("fixcopy-editing") && e.target.closest("[data-fixcopy-editable]") && e.target.closest("a,button")) e.preventDefault();
+  }, true);
+  send.addEventListener("click", function () {
+    finishSvg(false, false);
+    if (!changes().length) { status.style.opacity = ".25"; window.setTimeout(function () { status.style.opacity = "1"; }, 180); return; }
+    if (busy) return; busy = true; render();
+    // Desktop browsers also expose Web Share, but a copy is what people there expect; the sheet still offers sharing.
+    (window.matchMedia("(pointer:coarse)").matches ? shareReport : copyReport)(report());
+  });
+  again.addEventListener("click", function () { if (stale(sheetText)) hideSheet(true); else if (!busy) { busy = true; copyReport(sheetText); } });
+  share.addEventListener("click", function () { if (stale(sheetText)) hideSheet(true); else if (!busy) { busy = true; shareReport(sheetText); } });
+  manual.addEventListener("click", function () { if (stale(sheetText)) hideSheet(true); else result(sheetText, "copied"); });
+  dismiss.addEventListener("click", function () { hideSheet(true); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !panel.hidden) { e.preventDefault(); hideSheet(true); }
+  });
+  function setClosed(on) {
+    closed = on;
+    if (on) { setEditing(false); hideSheet(); }
+    persist();
+  }
+  close.addEventListener("click", function () { setClosed(true); });
+  handle.addEventListener("click", function () { setClosed(false); });
+  reset.addEventListener("pointerdown", function () { finishSvg(true, false); });
+  reset.addEventListener("click", function () {
+    finishSvg(true, false);
+    if (!changes().length || !window.confirm(t("confirm"))) return;
+    items.forEach(function (it) { put(it, it.original); });
+    sent = ""; hideSheet(); persist(); mark();
+  });
+  window.addEventListener("beforeunload", function (e) { if (unsent()) { e.preventDefault(); e.returnValue = ""; } });
+  window.addEventListener("resize", function () { layout(); placeSvg(); });
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(layout).observe(bar);
+  setEditing(false);
+  setClosed(closed);
+  }
+  if (document.body) boot();
+  else document.addEventListener("DOMContentLoaded", boot);
+})();
