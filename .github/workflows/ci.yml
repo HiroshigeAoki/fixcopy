@@ -17,14 +17,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
       - run: npm ci
       - run: npx playwright install --with-deps chromium-headless-shell
       - run: node --check fixcopy.js
       - run: npm test
+      - run: python3 --version
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
