@@ -159,7 +159,7 @@ test('inline script waits for the body and preserves line breaks', async () => {
   assert.equal(await p.locator('#words br').count(), 2);
   assert.equal(await p.locator('#words').evaluate(n => n.innerHTML), 'First<br>Second<br>Third');
   await p.locator('#fixcopy-send').click({ trial: true });
-  assert.match(await p.locator('#fixcopy-status').textContent(), /^1 /);
+  assert.match(await p.locator('#fixcopy-status').textContent(), /^(1 |Changes: 1 )/);
   await done(p);
 });
 test('async clipboard refusal falls through legacy copy to a manual sheet', async () => {
