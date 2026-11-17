@@ -159,10 +159,13 @@ def read_utf8(path):
         raise ValueError(f'cannot read UTF-8 file {path}: {error}') from error
 
 
-def refuse_symlink(path):
+def refuse_symlink(path, root=None):
+    """Refuse a link at path, and at each directory between it and root (the tree this run writes into)."""
     for candidate in (path, *path.parents):
         if candidate.is_symlink():
             raise ValueError(f'refused symlink: {candidate}')
+        if root is None or candidate == root:
+            break
     if path.exists() and not (path.is_file() or path.is_dir()):
         raise ValueError(f'not a regular file or directory: {path}')
 
@@ -204,6 +207,7 @@ def main(argv=None):
         if args.o and len(args.paths) != 1:
             raise ValueError('-o requires exactly one input path')
         writes = {}
+        messages = []
         directories = set()
         changed = False
         for source in args.paths:
@@ -226,10 +230,10 @@ def main(argv=None):
             files = walk_files(source) if directory else [source]
             for path in files:
                 if path.is_symlink():
-                    print(f'{path}: skipped (symlink)')
+                    messages.append(f'{path}: skipped (symlink)')
                     continue
                 target = (args.o / path.relative_to(source) if directory else args.o) if args.o else path
-                refuse_symlink(target)
+                refuse_symlink(target, args.o if directory else None)
                 if path.is_dir():
                     if args.o:
                         directories.add(target)
@@ -251,29 +255,30 @@ def main(argv=None):
                     if result != data:
                         status = 'injected'
                         changed = True
-                print(f'{path}: {status}')
+                messages.append(f'{path}: {status}')
                 if target != path or result != data:
-                    writes[target] = result
+                    writes[target] = (result, path)
         if not args.check:
             for directory in sorted(directories):
                 directory.mkdir(parents=True, exist_ok=True)
             # Stage every result before replacing any file.
             staged = []
             try:
-                for target, data in writes.items():
-                    refuse_symlink(target)
+                for target, (data, source) in writes.items():
                     target.parent.mkdir(parents=True, exist_ok=True)
                     with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.fixcopy-', delete=False) as temp:
                         staged.append((Path(temp.name), target))
                         temp.write(data)
-                    if target.exists():
-                        os.chmod(temp.name, stat.S_IMODE(target.stat().st_mode))
+                    # A new output takes the mode of the file it came from, not the temp file's 0600.
+                    os.chmod(temp.name, stat.S_IMODE((target if target.exists() else source).stat().st_mode))
                 for temporary, target in staged:
                     refuse_symlink(target)
                     os.replace(temporary, target)
             finally:
                 for temporary, _ in staged:
                     temporary.unlink(missing_ok=True)
+        if messages:
+            print('\n'.join(messages))
         return 1 if args.check and changed else 0
     except (OSError, ValueError) as error:
         print(f'fixcopy: {error}', file=sys.stderr)

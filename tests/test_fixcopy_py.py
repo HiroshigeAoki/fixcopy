@@ -77,6 +77,41 @@ class InjectorTest(unittest.TestCase):
         self.assertEqual(other.read_bytes(), b'Other')
         self.assertEqual(list(self.root.glob('.fixcopy-*')), [])
 
+    def test_new_outputs_keep_source_mode(self):
+        self.page.chmod(0o644)
+        out = self.root / 'out.html'
+        self.assertEqual(self.inject(self.page, '-o', out).returncode, 0)
+        self.assertEqual(out.stat().st_mode & 0o777, 0o644)
+        site = self.root / 'site'
+        site.mkdir()
+        (site / 'a.html').write_bytes(b'<meta name="fixcopy">A')
+        (site / 'a.html').chmod(0o664)
+        (site / 'style.css').write_bytes(b'p{}')
+        (site / 'style.css').chmod(0o640)
+        mirror = self.root / 'mirror'
+        self.assertEqual(self.inject(site, '-o', mirror).returncode, 0)
+        self.assertEqual((mirror / 'a.html').stat().st_mode & 0o777, 0o664)
+        self.assertEqual((mirror / 'style.css').stat().st_mode & 0o777, 0o640)
+
+    def test_symlinked_ancestor_is_allowed(self):
+        real = self.root / 'real'
+        real.mkdir()
+        (real / 'page.html').write_bytes(b'<body>Sample</body>')
+        link = self.root / 'link'
+        link.symlink_to(real, target_is_directory=True)
+        result = self.inject(link / 'page.html', '--in-place')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(b'data-fixcopy', (real / 'page.html').read_bytes())
+
+    def test_no_status_lines_when_nothing_is_written(self):
+        site = self.root / 'site'
+        site.mkdir()
+        (site / 'a.html').write_bytes(b'<meta name="fixcopy">A')
+        (site / 'z.html').write_bytes(b'\xff')
+        result = self.inject(site, '--in-place')
+        self.assertEqual(result.returncode, 2)
+        self.assertNotIn('injected', result.stdout)
+
     def test_check_without_output(self):
         original = self.page.read_bytes()
         self.assertEqual(self.inject(self.page, '--check').returncode, 1)
