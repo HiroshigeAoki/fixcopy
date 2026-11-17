@@ -26,14 +26,16 @@ You apply the list to the source yourself, or paste it to your agent.
 
 ## Add it to a page
 
-Put `fixcopy.js` next to your HTML file and add one line before `</body>`:
+Copy [`fixcopy.js`](fixcopy.js) from this repository, put it next to your HTML file and add one line before
+`</body>`:
 
 ```html
 <script src="fixcopy.js"></script>
 ```
 
-That is all. Open the page and a "Fix wording" bar appears at the bottom. Try it on
-[`examples/demo.html`](examples/demo.html).
+That is all. Open the page and a "Fix wording" bar appears at the bottom. To try it first, open
+[`examples/demo.html`](examples/demo.html) from a copy of this repository; it works straight from the file, with
+no server.
 
 Working with a coding agent? Ask it:
 
@@ -43,8 +45,8 @@ Working with a coding agent? Ask it:
 
 1. Press **Fix wording**.
 2. Tap any text and rewrite it. Changed text is highlighted.
-3. Press **Send your changes**. On a phone the share sheet opens; on a computer the list is copied to the
-   clipboard. Paste it into a chat or an email to the author.
+3. Press **Send your changes**. On a touch device (phone, tablet) the share sheet opens; on a computer the list
+   is copied to the clipboard. Paste it into a chat or an email to the author.
 
 Edits are kept in that browser (localStorage) until they are reset, so the reader can close the page and come
 back. They are not shared with anyone until the reader sends the list.
@@ -60,9 +62,9 @@ Add a meta tag with JSON. Every key is optional.
 | Key | Meaning |
 |---|---|
 | `title` | Title line of the list. Default: the page title. |
-| `send_to` | A short instruction shown after copying, telling the reader where to send the list. |
+| `send_to` | A short instruction (up to 60 characters) shown after copying or sharing, telling the reader where to send the list. |
 | `skip` | CSS selector for parts that must not be edited. |
-| `lang` | `"en"` or `"ja"`. Default: the page's `<html lang>`, then the browser language. |
+| `lang` | `"en"` or `"ja"`. Default: Japanese when the page's `<html lang>` starts with `ja`, English for any other `lang`; a page with no `lang` follows the browser language. |
 
 You can also mark a part as not editable in the HTML with the `data-no-edit` attribute.
 
@@ -81,8 +83,11 @@ again after updating `fixcopy.js` replaces the earlier copy.
 ```sh
 python3 fixcopy.py inject site/ -o out/     # a folder: only pages with <meta name="fixcopy">, or --all
 python3 fixcopy.py inject page.html --in-place
+python3 fixcopy.py inject site/ --check     # write nothing; exit 1 if a page would change
 python3 fixcopy.py hash                     # the hash, if your CSP is sent as an HTTP header
 ```
+
+`--script FILE` uses another copy of the script; the default is the `fixcopy.js` next to `fixcopy.py`.
 
 The script adds its own `<style>` element, so a policy that forbids inline styles will leave the bar unstyled.
 
@@ -98,10 +103,10 @@ The script adds its own `<style>` element, so a policy that forbids inline style
 ## Similar tools
 
 The idea is not new. [EditCopy](https://github.com/coreyrab/editcopy) does nearly the same thing, and browser
-extensions such as Overwrite cover the same need from the reader's side. fixcopy differs in small ways: no
-extension or install for the reader, an occurrence number when the same text appears more than once ("occurrence
-2 of 3"), edits that survive a reload, SVG labels, and a command that keeps a strict CSP intact. If one of the
-others fits you better, use it.
+extensions such as Overwrite cover the same need from the reader's side. I have not compared them in depth. What fixcopy
+offers, and what may or may not set it apart: no extension or install for the reader, an occurrence number when
+the same text appears more than once ("occurrence 2 of 3"), edits that survive a reload, SVG labels, and a
+command that keeps a strict CSP intact. If one of the others fits you better, use it.
 
 ## Development
 
