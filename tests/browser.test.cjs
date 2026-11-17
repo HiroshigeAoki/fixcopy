@@ -16,6 +16,17 @@ async function open(name = 'en', options = {}, init) {
   return page;
 }
 async function done(page) { assert.deepEqual(page.errors, []); await page.context().close(); }
+test('script at the top of body waits for the whole page and a later meta tag', async () => {
+  const p = await open();
+  await p.route('**/top.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:
+    '<html lang="en"><head></head><body><script src="/fixcopy.js"></script>' +
+    '<meta name="fixcopy" content=\'{"lang":"ja"}\'><h1>Title</h1><p id="late">Late wording</p></body></html>'}));
+  await p.goto(env.base + '/top.html');
+  assert.equal(await p.locator('#fixcopy-title').textContent(), '✎ 文言を直す');
+  await p.locator('#fixcopy-bar button').first().click();
+  assert.equal(await p.locator('#late').getAttribute('contenteditable'), 'plaintext-only');
+  await done(p);
+});
 test('self enabling, head/body placement, duplicate load and metadata defaults', async () => {
   for (const name of ['en','head']) {
     const p = await open(name);
@@ -159,7 +170,7 @@ test('inline script waits for the body and preserves line breaks', async () => {
   assert.equal(await p.locator('#words br').count(), 2);
   assert.equal(await p.locator('#words').evaluate(n => n.innerHTML), 'First<br>Second<br>Third');
   await p.locator('#fixcopy-send').click({ trial: true });
-  assert.match(await p.locator('#fixcopy-status').textContent(), /^(1 |Changes: 1 )/);
+  assert.match(await p.locator('#fixcopy-status').textContent(), /^Changes: 1 /);
   await done(p);
 });
 test('async clipboard refusal falls through legacy copy to a manual sheet', async () => {

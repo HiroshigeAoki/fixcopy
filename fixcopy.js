@@ -71,8 +71,8 @@
     "sendCount": "Send your changes ({n})",
     "open": "Open wording editor",
     "unsent": " (unsent: {n})",
-    "where": "Paste and send them in a chat or email to the author.",
-    "paste": "Paste and send them. ",
+    "where": "Paste the list into a chat or email to the author and send it.",
+    "paste": "Paste the list and send it. ",
     "sharedNote": "Shared. Please finish sending in the app. ",
     "copiedNote": "✓ Copied\n{paste}\nNothing reaches the author until you paste and send it.",
     "cancelled": "Sharing cancelled. You can copy and paste your changes instead.",
@@ -542,6 +542,7 @@
   setEditing(false);
   setClosed(closed);
   }
-  if (document.body) boot();
-  else document.addEventListener("DOMContentLoaded", boot);
+  // Wait for the whole page: a script tag in the middle of the body must still see the content after it.
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
