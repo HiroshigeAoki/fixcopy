@@ -93,6 +93,12 @@ class InjectorTest(unittest.TestCase):
         self.assertEqual((mirror / 'a.html').stat().st_mode & 0o777, 0o664)
         self.assertEqual((mirror / 'style.css').stat().st_mode & 0o777, 0o640)
 
+    def test_special_mode_bits_are_not_copied(self):
+        self.page.chmod(0o2755)
+        out = self.root / 'out.html'
+        self.assertEqual(self.inject(self.page, '-o', out).returncode, 0)
+        self.assertEqual(out.stat().st_mode & 0o7777, 0o755)
+
     def test_symlinked_ancestor_is_allowed(self):
         real = self.root / 'real'
         real.mkdir()

@@ -233,7 +233,8 @@ def main(argv=None):
                     messages.append(f'{path}: skipped (symlink)')
                     continue
                 target = (args.o / path.relative_to(source) if directory else args.o) if args.o else path
-                refuse_symlink(target, args.o if directory else None)
+                root = args.o if directory else None
+                refuse_symlink(target, root)
                 if path.is_dir():
                     if args.o:
                         directories.add(target)
@@ -257,25 +258,26 @@ def main(argv=None):
                         changed = True
                 messages.append(f'{path}: {status}')
                 if target != path or result != data:
-                    writes[target] = (result, path)
+                    writes[target] = (result, path, root)
         if not args.check:
             for directory in sorted(directories):
                 directory.mkdir(parents=True, exist_ok=True)
             # Stage every result before replacing any file.
             staged = []
             try:
-                for target, (data, source) in writes.items():
+                for target, (data, source, root) in writes.items():
+                    refuse_symlink(target, root)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.fixcopy-', delete=False) as temp:
-                        staged.append((Path(temp.name), target))
+                        staged.append((Path(temp.name), target, root))
                         temp.write(data)
-                    # A new output takes the mode of the file it came from, not the temp file's 0600.
-                    os.chmod(temp.name, stat.S_IMODE((target if target.exists() else source).stat().st_mode))
-                for temporary, target in staged:
-                    refuse_symlink(target)
+                    # A new output takes the mode of the file it came from, not the temp file's 0600; setuid, setgid and sticky bits are dropped.
+                    os.chmod(temp.name, (target if target.exists() else source).stat().st_mode & 0o777)
+                for temporary, target, root in staged:
+                    refuse_symlink(target, root)
                     os.replace(temporary, target)
             finally:
-                for temporary, _ in staged:
+                for temporary, _, _ in staged:
                     temporary.unlink(missing_ok=True)
         if messages:
             print('\n'.join(messages))
