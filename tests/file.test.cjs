@@ -14,9 +14,9 @@ test('file URL: editing, storage and sending', async t => {
     assert.equal(await page.locator('#dup2').textContent(), 'Fresh bread');
     await page.reload();
     assert.equal(await page.locator('#dup2').textContent(), 'Fresh bread');
-    await page.locator('#fixcopy-send').click();
-    await page.locator('#fixcopy-panel').waitFor();
-    const mode = await page.locator('#fixcopy-note').getAttribute('data-mode');
+    await page.locator('#fixwords-send').click();
+    await page.locator('#fixwords-panel').waitFor();
+    const mode = await page.locator('#fixwords-note').getAttribute('data-mode');
     assert.ok(['copied','manual'].includes(mode));
     t.diagnostic('file URL: editing works; persistence works; send outcome=' + mode);
     assert.deepEqual(errors,[]);

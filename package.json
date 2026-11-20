@@ -1,12 +1,12 @@
 {
-  "name": "fixcopy",
+  "name": "fixwords",
   "version": "0.1.0",
   "private": true,
   "description": "Let people correct the wording of a shared static HTML page and send back the list of changes.",
   "license": "MIT",
   "scripts": {
     "test": "node --test tests/",
-    "check": "node --check fixcopy.js"
+    "check": "node --check fixwords.js"
   },
   "devDependencies": {
     "playwright": "1.65.1"
