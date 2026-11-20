@@ -4,7 +4,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 exports.setup = async function () {
   const server = http.createServer((req, res) => {
-    const file = req.url === '/fixcopy.js' ? 'fixcopy.js' : 'tests/fixtures/' + path.basename(req.url.split('?')[0]);
+    const file = req.url === '/fixwords.js' ? 'fixwords.js' : 'tests/fixtures/' + path.basename(req.url.split('?')[0]);
     fs.readFile(path.resolve(file), (err, data) => {
       res.writeHead(err ? 404 : 200, { 'Content-Type': file.endsWith('.js') ? 'application/javascript; charset=utf-8' : 'text/html; charset=utf-8' });
       res.end(err ? '' : data);
@@ -20,7 +20,7 @@ exports.setup = async function () {
       close: async () => { await browser.close(); await new Promise(r => server.close(r)); } };
   } catch (err) { server.close(); throw err; }
 };
-exports.start = page => page.locator('#fixcopy-title').click();
+exports.start = page => page.locator('#fixwords-title').click();
 exports.edit = async (page, selector = '#dup2', value = 'Fresh bread') => {
   await page.locator(selector).fill(value);
   await page.locator(selector).blur();

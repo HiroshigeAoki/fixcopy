@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inline fixcopy into UTF-8 HTML files and update their CSP meta tags."""
+"""Inline fixwords into UTF-8 HTML files and update their CSP meta tags."""
 import argparse
 import base64
 import hashlib
@@ -43,7 +43,7 @@ class Document(HTMLParser):
         self.feed(text)
         self.close()
         if self.script and self.script[2]:
-            raise ValueError('unterminated <script data-fixcopy> block')
+            raise ValueError('unterminated <script data-fixwords> block')
 
     def position(self):
         line, column = self.getpos()
@@ -58,10 +58,10 @@ class Document(HTMLParser):
             self.raw = tag
         if tag == 'script':
             src = attrs.get('src') or ''
-            external = unquote(urlsplit(src).path).rsplit('/', 1)[-1] == 'fixcopy.js'
-            self.script = (start, start + len(self.get_starttag_text()), 'data-fixcopy' in attrs, external)
+            external = unquote(urlsplit(src).path).rsplit('/', 1)[-1] == 'fixwords.js'
+            self.script = (start, start + len(self.get_starttag_text()), 'data-fixwords' in attrs, external)
         if tag == 'meta':
-            self.tagged |= (attrs.get('name') or '').lower() == 'fixcopy'
+            self.tagged |= (attrs.get('name') or '').lower() == 'fixwords'
             if (attrs.get('http-equiv') or '').lower() == 'content-security-policy':
                 self.policies.append((start, start + len(self.get_starttag_text()), attrs.get('content') or ''))
 
@@ -149,7 +149,7 @@ def inject_text(text, js):
         text = text[:start] + replacement + text[end:]
     doc = Document(text)
     end = doc.bodies[-1] if doc.bodies else len(text)
-    return text[:end] + '<script data-fixcopy>' + js + '</script>' + text[end:]
+    return text[:end] + '<script data-fixwords>' + js + '</script>' + text[end:]
 
 
 def read_utf8(path):
@@ -179,20 +179,20 @@ def walk_files(source):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Inline fixcopy and update CSP meta tags.')
+    parser = argparse.ArgumentParser(description='Inline fixwords and update CSP meta tags.')
     parser.add_argument('--version', action='version', version='0.1.0', help='show version and exit')
     commands = parser.add_subparsers(dest='command', required=True)
-    inject = commands.add_parser('inject', help='inject HTML files', description='A named file is always injected. Directories only inject pages with <meta name="fixcopy"> unless --all is used.', epilog='Example: fixcopy.py inject page.html --in-place')
+    inject = commands.add_parser('inject', help='inject HTML files', description='A named file is always injected. Directories only inject pages with <meta name="fixwords"> unless --all is used.', epilog='Example: fixwords.py inject page.html --in-place')
     inject.add_argument('paths', nargs='+', type=Path, help='HTML files or directories to process')
     output = inject.add_mutually_exclusive_group()
     output.add_argument('-o', type=Path, metavar='OUT', help='output file (overwrites an existing regular file) or new/empty directory')
     output.add_argument('--in-place', action='store_true', help='replace input files in place')
     inject.add_argument('--all', action='store_true', help='inject every HTML file in directories')
     inject.add_argument('--check', action='store_true', help='list changes without writing')
-    hash_command = commands.add_parser('hash', help='print the CSP hash', epilog='Example: fixcopy.py hash --script fixcopy.js')
+    hash_command = commands.add_parser('hash', help='print the CSP hash', epilog='Example: fixwords.py hash --script fixwords.js')
     for command in (inject, hash_command):
-        command.add_argument('--script', type=Path, default=Path(__file__).resolve().with_name('fixcopy.js'), help='script to inline (default: fixcopy.js next to fixcopy.py)')
-    parser.epilog = 'Examples: fixcopy.py inject page.html --in-place; fixcopy.py hash'
+        command.add_argument('--script', type=Path, default=Path(__file__).resolve().with_name('fixwords.js'), help='script to inline (default: fixwords.js next to fixwords.py)')
+    parser.epilog = 'Examples: fixwords.py inject page.html --in-place; fixwords.py hash'
     args = parser.parse_args(argv)
     try:
         try:
@@ -248,7 +248,7 @@ def main(argv=None):
                     text = read_utf8(path)
                     try:
                         if directory and not args.all and not Document(text).tagged:
-                            status = 'skipped (no fixcopy meta tag)'
+                            status = 'skipped (no fixwords meta tag)'
                         else:
                             result = inject_text(text, js).encode('utf-8')
                     except ValueError as error:
@@ -268,7 +268,7 @@ def main(argv=None):
                 for target, (data, source, root) in writes.items():
                     refuse_symlink(target, root)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.fixcopy-', delete=False) as temp:
+                    with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.fixwords-', delete=False) as temp:
                         staged.append((Path(temp.name), target, root))
                         temp.write(data)
                     # A new output takes the mode of the file it came from, not the temp file's 0600; setuid, setgid and sticky bits are dropped.
@@ -283,7 +283,7 @@ def main(argv=None):
             print('\n'.join(messages))
         return 1 if args.check and changed else 0
     except (OSError, ValueError) as error:
-        print(f'fixcopy: {error}', file=sys.stderr)
+        print(f'fixwords: {error}', file=sys.stderr)
         return 2
 
 

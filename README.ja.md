@@ -1,11 +1,11 @@
-# fixcopy
+# fixwords
 
 [English](README.md)
 
 共有したページの文言を、見た人が自分で直せるようにする小さな道具です。
 
 モックや下書きのページを作って（AI に作らせた場合も含みます）、コードを書かない同僚に見てもらったとします。
-同僚は、直したい言い回しを見つけます。fixcopy を入れたページなら、同僚は画面の上でその文字を書き換え、ボタンを1つ
+同僚は、直したい言い回しを見つけます。fixwords を入れたページなら、同僚は画面の上でその文字を書き換え、ボタンを1つ
 押して、できた一覧をチャットやメールに貼って送るだけです。
 
 ```
@@ -26,10 +26,10 @@
 
 ## ページに入れる
 
-このリポジトリの [`fixcopy.js`](fixcopy.js) をコピーして HTML と同じ場所に置き、`</body>` の前に1行足します。
+このリポジトリの [`fixwords.js`](fixwords.js) をコピーして HTML と同じ場所に置き、`</body>` の前に1行足します。
 
 ```html
-<script src="fixcopy.js"></script>
+<script src="fixwords.js"></script>
 ```
 
 これだけです。ページを開くと、下に「文言を直す」のバーが出ます。
@@ -38,7 +38,7 @@
 
 AI に作業させている場合は、こう頼めば済みます。
 
-> このページに fixcopy を入れて。fixcopy.js を HTML と同じ場所にコピーし、`</body>` の前で script タグで読み込んで。
+> このページに fixwords を入れて。fixwords.js を HTML と同じ場所にコピーし、`</body>` の前で script タグで読み込んで。
 
 ## 直す人がすること
 
@@ -55,7 +55,7 @@ AI に作業させている場合は、こう頼めば済みます。
 JSON を入れた meta タグを足します。どの項目も省けます。
 
 ```html
-<meta name="fixcopy" content='{"title": "春のメニュー案", "send_to": "佐藤にチャットで送ってください", "skip": ".legal, nav", "lang": "ja"}'>
+<meta name="fixwords" content='{"title": "春のメニュー案", "send_to": "佐藤にチャットで送ってください", "skip": ".legal, nav", "lang": "ja"}'>
 ```
 
 | 項目 | 意味 |
@@ -73,20 +73,20 @@ HTML の側で `data-no-edit` 属性を付けても、その場所は直せな�
 したい場合は、コマンドを使います。必要なのは Python 3 だけです。
 
 ```sh
-python3 fixcopy.py inject page.html -o page-with-fixcopy.html
+python3 fixwords.py inject page.html -o page-with-fixwords.html
 ```
 
 スクリプトを `</body>` の前に埋め込み、その `sha256` ハッシュをページの CSP の meta タグに足します。
-`fixcopy.js` を更新してもう一度実行すると、前に入れたものと置き換わります。
+`fixwords.js` を更新してもう一度実行すると、前に入れたものと置き換わります。
 
 ```sh
-python3 fixcopy.py inject site/ -o out/     # フォルダー: <meta name="fixcopy"> のあるページだけ。--all で全部
-python3 fixcopy.py inject page.html --in-place
-python3 fixcopy.py inject site/ --check     # 何も書かずに確認。変わるページがあれば終了コード 1
-python3 fixcopy.py hash                     # CSP を HTTP ヘッダーで送っている場合に足すハッシュ
+python3 fixwords.py inject site/ -o out/     # フォルダー: <meta name="fixwords"> のあるページだけ。--all で全部
+python3 fixwords.py inject page.html --in-place
+python3 fixwords.py inject site/ --check     # 何も書かずに確認。変わるページがあれば終了コード 1
+python3 fixwords.py hash                     # CSP を HTTP ヘッダーで送っている場合に足すハッシュ
 ```
 
-`--script FILE` で別の場所のスクリプトを使えます。省くと `fixcopy.py` と同じ場所の `fixcopy.js` を使います。
+`--script FILE` で別の場所のスクリプトを使えます。省くと `fixwords.py` と同じ場所の `fixwords.js` を使います。
 
 スクリプトは自分用の `<style>` を足します。インラインのスタイルを禁止している CSP では、バーの見た目が崩れます。
 
@@ -101,7 +101,7 @@ python3 fixcopy.py hash                     # CSP を HTTP ヘッダーで送っ
 ## 似た道具
 
 この考え方は新しいものではありません。[EditCopy](https://github.com/coreyrab/editcopy) はほぼ同じことができます。
-Overwrite などのブラウザー拡張も、直す人の側から同じ用途に応えています。ほかの道具と細かく比べたわけではありません。fixcopy にあるのは次の点で、違いになるかどうかは場合によります。
+Overwrite などのブラウザー拡張も、直す人の側から同じ用途に応えています。ほかの道具と細かく比べたわけではありません。fixwords にあるのは次の点で、違いになるかどうかは場合によります。
 直す人は拡張もインストールも要らないこと、同じ文字が何度も出るときに「何か所目」かを一覧に書くこと、
 ページを読み込み直しても直しが残ること、図の文字を直せること、厳しい CSP を保ったまま入れられるコマンドがあること、です。
 ほかの道具のほうが合うなら、そちらを使ってください。

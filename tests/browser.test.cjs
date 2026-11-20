@@ -19,29 +19,29 @@ async function done(page) { assert.deepEqual(page.errors, []); await page.contex
 test('script at the top of body waits for the whole page and a later meta tag', async () => {
   const p = await open();
   await p.route('**/top.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:
-    '<html lang="en"><head></head><body><script src="/fixcopy.js"></script>' +
-    '<meta name="fixcopy" content=\'{"lang":"ja"}\'><h1>Title</h1><p id="late">Late wording</p></body></html>'}));
+    '<html lang="en"><head></head><body><script src="/fixwords.js"></script>' +
+    '<meta name="fixwords" content=\'{"lang":"ja"}\'><h1>Title</h1><p id="late">Late wording</p></body></html>'}));
   await p.goto(env.base + '/top.html');
-  assert.equal(await p.locator('#fixcopy-title').textContent(), '✎ 文言を直す');
-  await p.locator('#fixcopy-bar button').first().click();
+  assert.equal(await p.locator('#fixwords-title').textContent(), '✎ 文言を直す');
+  await p.locator('#fixwords-bar button').first().click();
   assert.equal(await p.locator('#late').getAttribute('contenteditable'), 'plaintext-only');
   await done(p);
 });
 test('self enabling, head/body placement, duplicate load and metadata defaults', async () => {
   for (const name of ['en','head']) {
     const p = await open(name);
-    assert.equal(await p.locator('#fixcopy-title').textContent(), '✎ Fix wording');
-    await p.addScriptTag({ url: '/fixcopy.js' });
-    assert.equal(await p.locator('#fixcopy-bar').count(), 1);
+    assert.equal(await p.locator('#fixwords-title').textContent(), '✎ Fix wording');
+    await p.addScriptTag({ url: '/fixwords.js' });
+    assert.equal(await p.locator('#fixwords-bar').count(), 1);
     await done(p);
   }
   for (const content of ['', 'on', '{broken']) {
     const p = await open();
     await p.route('**/defaults.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:
-      '<html lang="en"><head><meta name="fixcopy" content="' + content +
-      '"></head><body><p>Sample wording</p><script src="/fixcopy.js"></script></body></html>'}));
+      '<html lang="en"><head><meta name="fixwords" content="' + content +
+      '"></head><body><p>Sample wording</p><script src="/fixwords.js"></script></body></html>'}));
     await p.goto(env.base + '/defaults.html');
-    assert.equal(await p.locator('#fixcopy-title').textContent(), '✎ Fix wording');
+    assert.equal(await p.locator('#fixwords-title').textContent(), '✎ Fix wording');
     await done(p);
   }
 });
@@ -54,10 +54,10 @@ test('language selection: page, configuration and navigator', async () => {
   ]) {
     const p = await open('en', {locale});
     await p.route('**/language.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:
-      '<html lang="' + html + '"><head><meta name="fixcopy" content=\'' + JSON.stringify({lang:configured}) +
-      '\'></head><body><p>Sample wording</p><script src="/fixcopy.js"></script></body></html>'}));
+      '<html lang="' + html + '"><head><meta name="fixwords" content=\'' + JSON.stringify({lang:configured}) +
+      '\'></head><body><p>Sample wording</p><script src="/fixwords.js"></script></body></html>'}));
     await p.goto(env.base + '/language.html');
-    assert.ok((await p.locator('#fixcopy-title').textContent()).includes(expected));
+    assert.ok((await p.locator('#fixwords-title').textContent()).includes(expected));
     await done(p);
   }
 });
@@ -68,31 +68,31 @@ test('editing, both reports, persistence, folding, reset and exclusions', async 
     assert.equal(await p.locator('#protected').getAttribute('contenteditable'), null);
     await edit(p);
     await p.locator('#label').click();
-    await p.locator('#fixcopy-svg-input').fill('Wrapped');
+    await p.locator('#fixwords-svg-input').fill('Wrapped');
     await p.keyboard.press('Enter');
-    assert.match(await p.locator('#fixcopy-status').textContent(), /2/);
-    await p.locator('#fixcopy-send').click();
+    assert.match(await p.locator('#fixwords-status').textContent(), /2/);
+    await p.locator('#fixwords-send').click();
     const report = await p.evaluate(() => navigator.clipboard.readText());
     assert.equal(report, lang === 'en'
       ? 'Bread basket — Wording changes\n\n1. Before (occurrence 2 of 2; under “Our menu”): Baked daily\n   After: Fresh bread\n\n2. (figure) Before: Packing\n   After: Wrapped'
       : 'パンのかご 文言の直し\n\n1. 元（2か所目／全2か所・見出し「今日のメニュー」の下）：毎朝焼きます\n   新：Fresh bread\n\n2. （図）元：袋詰め\n   新：Wrapped');
-    assert.equal(await p.locator('#fixcopy-status').textContent(), lang === 'en' ? 'Changes: 2 · Copied' : '2 か所 ・ 送る文章はコピー済みです');
-    assert.equal(await p.locator('#fixcopy-send').textContent(), lang === 'en' ? 'Send your changes (2)' : '直した内容を送る（2 か所）');
-    const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('fixcopy:' + location.pathname)));
+    assert.equal(await p.locator('#fixwords-status').textContent(), lang === 'en' ? 'Changes: 2 · Copied' : '2 か所 ・ 送る文章はコピー済みです');
+    assert.equal(await p.locator('#fixwords-send').textContent(), lang === 'en' ? 'Send your changes (2)' : '直した内容を送る（2 か所）');
+    const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('fixwords:' + location.pathname)));
     assert.equal(stored.v, 1); assert.equal(stored.closed, false); assert.equal(typeof stored.sent, 'string');
     assert.deepEqual(stored.edits.map(e => [e.i, e.n, !!e.s, e.t]), [[2, 2, false, 'Fresh bread'], [1, 1, true, 'Wrapped']]);
     await p.reload();
     assert.equal(await p.locator('#dup2').textContent(), 'Fresh bread');
     assert.equal(await p.locator('#label').textContent(), 'Wrapped');
-    await p.locator('#fixcopy-bar button[aria-label]').click();
-    assert.equal(await p.locator('#fixcopy-bar').isVisible(), false);
-    assert.equal(await p.locator('#fixcopy-handle').isVisible(), true);
+    await p.locator('#fixwords-bar button[aria-label]').click();
+    assert.equal(await p.locator('#fixwords-bar').isVisible(), false);
+    assert.equal(await p.locator('#fixwords-handle').isVisible(), true);
     await p.reload();
-    assert.equal(await p.locator('#fixcopy-bar').isVisible(), false);
-    assert.equal(await p.locator('#fixcopy-handle').isVisible(), true);
-    assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('fixcopy:' + location.pathname)).closed), true);
-    await p.locator('#fixcopy-handle').click();
-    assert.equal(await p.locator('#fixcopy-bar').isVisible(), true);
+    assert.equal(await p.locator('#fixwords-bar').isVisible(), false);
+    assert.equal(await p.locator('#fixwords-handle').isVisible(), true);
+    assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('fixwords:' + location.pathname)).closed), true);
+    await p.locator('#fixwords-handle').click();
+    assert.equal(await p.locator('#fixwords-bar').isVisible(), true);
     // Declining the confirm dialog leaves the edits alone.
     p.once('dialog', async d => { await d.dismiss(); });
     await p.getByRole('button', {name: lang === 'en' ? 'Reset changes' : '元に戻す', exact:true}).click();
@@ -109,7 +109,7 @@ test('settings, manual fallback and unavailable APIs', async () => {
   await p.route('**/settings.html', async route => {
     const fs = require('node:fs');
     await route.fulfill({contentType:'text/html; charset=utf-8', body:fs.readFileSync('tests/fixtures/en.html','utf8').replace('</head>',
-      '<meta name="fixcopy" content=\'{"title":"Bread notes","send_to":"Send to the bakery","skip":".skip"}\'></head>')});
+      '<meta name="fixwords" content=\'{"title":"Bread notes","send_to":"Send to the bakery","skip":".skip"}\'></head>')});
   });
   await p.addInitScript(() => {
     Object.defineProperty(navigator,'clipboard',{get(){ throw new Error('Unavailable'); }});
@@ -120,11 +120,11 @@ test('settings, manual fallback and unavailable APIs', async () => {
   await p.goto(env.base + '/settings.html');
   await start(p);
   assert.equal(await p.locator('.skip').getAttribute('contenteditable'), null);
-  assert.match(await p.locator('#fixcopy-guide').textContent(), /Send to the bakery/);
+  assert.match(await p.locator('#fixwords-guide').textContent(), /Send to the bakery/);
   await edit(p);
-  await p.locator('#fixcopy-send').click();
-  assert.equal(await p.locator('#fixcopy-panel textarea').inputValue().then(s => s.startsWith('Bread notes')), true);
-  assert.match(await p.locator('#fixcopy-note').textContent(), /Select/);
+  await p.locator('#fixwords-send').click();
+  assert.equal(await p.locator('#fixwords-panel textarea').inputValue().then(s => s.startsWith('Bread notes')), true);
+  assert.match(await p.locator('#fixwords-note').textContent(), /Select/);
   await done(p);
 });
 test('phone share, cancellation, no overflow, SVG keyboard and composition', async () => {
@@ -135,7 +135,7 @@ test('phone share, cancellation, no overflow, SVG keyboard and composition', asy
     await start(p);
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= 390), true);
     await p.locator('#label').click();
-    const input = p.locator('#fixcopy-svg-input');
+    const input = p.locator('#fixwords-svg-input');
     await input.fill('New label');
     await input.dispatchEvent('keydown',{key:'Enter',isComposing:true});
     assert.equal(await input.count(), 1);
@@ -145,8 +145,8 @@ test('phone share, cancellation, no overflow, SVG keyboard and composition', asy
     assert.equal(await p.locator('#label').textContent(), 'Packing');
     await p.locator('#span2').click(); await input.fill('Packed'); await p.keyboard.press('Enter');
     assert.equal(await p.locator('#span1').textContent(), 'Ready');
-    await p.locator('#fixcopy-send').click();
-    if (cancel) assert.match(await p.locator('#fixcopy-note').textContent(), /cancelled/);
+    await p.locator('#fixwords-send').click();
+    if (cancel) assert.match(await p.locator('#fixwords-note').textContent(), /cancelled/);
     else assert.match(await p.evaluate(() => window.shared.text), /\(figure\).*occurrence 2 of 2/);
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= 390), true);
     await done(p);
@@ -155,7 +155,7 @@ test('phone share, cancellation, no overflow, SVG keyboard and composition', asy
 
 test('inline script waits for the body and preserves line breaks', async () => {
   const p = await open();
-  const script = require('node:fs').readFileSync('fixcopy.js', 'utf8');
+  const script = require('node:fs').readFileSync('fixwords.js', 'utf8');
   await p.route('**/inline.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:
     '<html lang="en"><head><script>' + script + '</script></head><body><p id="words">First<br>Second</p></body></html>'}));
   await p.goto(env.base + '/inline.html');
@@ -169,8 +169,8 @@ test('inline script waits for the body and preserves line breaks', async () => {
   await p.locator('#words').blur();
   assert.equal(await p.locator('#words br').count(), 2);
   assert.equal(await p.locator('#words').evaluate(n => n.innerHTML), 'First<br>Second<br>Third');
-  await p.locator('#fixcopy-send').click({ trial: true });
-  assert.match(await p.locator('#fixcopy-status').textContent(), /^Changes: 1 /);
+  await p.locator('#fixwords-send').click({ trial: true });
+  assert.match(await p.locator('#fixwords-status').textContent(), /^Changes: 1 /);
   await done(p);
 });
 test('async clipboard refusal falls through legacy copy to a manual sheet', async () => {
@@ -179,9 +179,9 @@ test('async clipboard refusal falls through legacy copy to a manual sheet', asyn
     document.execCommand = () => false;
   });
   await start(p); await edit(p);
-  await p.locator('#fixcopy-send').click();
-  assert.equal(await p.locator('#fixcopy-note').getAttribute('data-mode'), 'manual');
-  assert.match(await p.locator('#fixcopy-panel textarea').inputValue(), /After: Fresh bread/);
+  await p.locator('#fixwords-send').click();
+  assert.equal(await p.locator('#fixwords-note').getAttribute('data-mode'), 'manual');
+  assert.match(await p.locator('#fixwords-panel textarea').inputValue(), /After: Fresh bread/);
   await done(p);
 });
 test('SVG retains author attributes, edge spaces and excludes hidden definitions', async () => {
@@ -196,16 +196,16 @@ test('SVG retains author attributes, edge spaces and excludes hidden definitions
   await p.route('**/attributes.html', route => route.fulfill({contentType:'text/html; charset=utf-8',body:source}));
   await p.goto(env.base + '/attributes.html');
   await start(p);
-  assert.equal(await p.locator('svg title').getAttribute('data-fixcopy-editable'), null);
-  assert.equal(await p.locator('svg defs text').getAttribute('data-fixcopy-editable'), null);
+  assert.equal(await p.locator('svg title').getAttribute('data-fixwords-editable'), null);
+  assert.equal(await p.locator('svg defs text').getAttribute('data-fixwords-editable'), null);
   await p.locator('#label').focus(); await p.keyboard.press('Space');
-  await p.locator('#fixcopy-svg-input').fill('Packed');
+  await p.locator('#fixwords-svg-input').fill('Packed');
   await p.keyboard.press('Enter');
   assert.equal(await p.locator('#label').textContent(), ' Packed ');
   await p.getByRole('button',{name:'Finish editing',exact:true}).click();
   assert.equal(await p.locator('#label').getAttribute('role'), 'link');
   assert.equal(await p.locator('#label').getAttribute('tabindex'), '-1');
-  assert.equal(await p.locator('svg rect.fixcopy-box.changed').count(), 1);
+  assert.equal(await p.locator('svg rect.fixwords-box.changed').count(), 1);
   await done(p);
 });
 
@@ -217,30 +217,30 @@ test('SVG: blur commits, keyCode 229 does not, separate counters, box styling an
   await p.goto(env.base + '/counters.html');
   await start(p);
   // One dashed box per label (2 labels + 2 tspans), inserted before its text element.
-  assert.equal(await p.locator('svg rect.fixcopy-box').count(), 3);
-  assert.equal(await p.locator('#label').evaluate(n => n.previousElementSibling.classList.contains('fixcopy-box')), true);
-  assert.equal(await p.locator('svg rect.fixcopy-box').first().evaluate(n => getComputedStyle(n).vectorEffect), 'non-scaling-stroke');
+  assert.equal(await p.locator('svg rect.fixwords-box').count(), 3);
+  assert.equal(await p.locator('#label').evaluate(n => n.previousElementSibling.classList.contains('fixwords-box')), true);
+  assert.equal(await p.locator('svg rect.fixwords-box').first().evaluate(n => getComputedStyle(n).vectorEffect), 'non-scaling-stroke');
   await p.emulateMedia({ media: 'print' });
-  assert.equal(await p.locator('svg rect.fixcopy-box').first().evaluate(n => getComputedStyle(n).display), 'none');
+  assert.equal(await p.locator('svg rect.fixwords-box').first().evaluate(n => getComputedStyle(n).display), 'none');
   await p.emulateMedia({ media: 'screen' });
   await p.locator('#span1').click();
-  const input = p.locator('#fixcopy-svg-input');
+  const input = p.locator('#fixwords-svg-input');
   await input.fill('Done');
   await input.dispatchEvent('keydown', { key: 'Enter', keyCode: 229 });
   assert.equal(await input.count(), 1);
   // Blur commits.
-  await p.locator('#fixcopy-title').focus();
+  await p.locator('#fixwords-title').focus();
   assert.equal(await input.count(), 0);
   assert.equal(await p.locator('#span1').textContent(), 'Done');
   // HTML and SVG duplicates are counted separately: html "Ready" is 1 of 1 (no note) while the two svg ones are 1 of 2.
   await edit(p, '#ready', 'Ok');
-  await p.locator('#fixcopy-send').click();
-  await p.locator('#fixcopy-panel').waitFor();
-  const report = await p.locator('#fixcopy-panel textarea').inputValue();
+  await p.locator('#fixwords-send').click();
+  await p.locator('#fixwords-panel').waitFor();
+  const report = await p.locator('#fixwords-panel textarea').inputValue();
   assert.equal(report.match(/occurrence/g).length, 1);
   assert.match(report, /\(figure\) Before \(occurrence 1 of 2; under “Our menu”\): Ready\n   After: Done/);
   assert.match(report, /1\. Before: Ready\n   After: Ok/);
-  assert.equal(await p.locator('svg rect.fixcopy-box.changed').count(), 1);
+  assert.equal(await p.locator('svg rect.fixwords-box.changed').count(), 1);
   await done(p);
 });
 test('SVG labels with a zero box or a CSS transform get no dashed box', async () => {
@@ -250,25 +250,25 @@ test('SVG labels with a zero box or a CSS transform get no dashed box', async ()
   await p.route('**/boxes.html', route => route.fulfill({contentType:'text/html; charset=utf-8', body:source}));
   await p.goto(env.base + '/boxes.html');
   await start(p);
-  assert.equal(await p.locator('#moved').evaluate(n => n.previousElementSibling && n.previousElementSibling.classList.contains('fixcopy-box')), false);
-  assert.equal(await p.locator('#gone').evaluate(n => n.previousElementSibling && n.previousElementSibling.classList.contains('fixcopy-box')), false);
-  assert.equal(await p.locator('#label').evaluate(n => n.previousElementSibling.classList.contains('fixcopy-box')), true);
+  assert.equal(await p.locator('#moved').evaluate(n => n.previousElementSibling && n.previousElementSibling.classList.contains('fixwords-box')), false);
+  assert.equal(await p.locator('#gone').evaluate(n => n.previousElementSibling && n.previousElementSibling.classList.contains('fixwords-box')), false);
+  assert.equal(await p.locator('#label').evaluate(n => n.previousElementSibling.classList.contains('fixwords-box')), true);
   await done(p);
 });
 test('Escape closes the sheet, Space opens a focused label, saved SVG edit uses the s flag', async () => {
   const p = await open('en', { permissions: ['clipboard-read', 'clipboard-write'] });
   await start(p);
   await p.locator('#label').focus(); await p.keyboard.press('Space');
-  await p.locator('#fixcopy-svg-input').fill(' Wrapped up ');
+  await p.locator('#fixwords-svg-input').fill(' Wrapped up ');
   await p.keyboard.press('Enter');
   assert.equal(await p.locator('#label').textContent(), 'Wrapped up');
   assert.equal(await p.evaluate(() => document.activeElement.id), 'label');
-  await p.locator('#fixcopy-send').click();
-  await p.locator('#fixcopy-panel').waitFor();
-  assert.equal(await p.locator('#fixcopy-panel').isVisible(), true);
+  await p.locator('#fixwords-send').click();
+  await p.locator('#fixwords-panel').waitFor();
+  assert.equal(await p.locator('#fixwords-panel').isVisible(), true);
   await p.keyboard.press('Escape');
-  assert.equal(await p.locator('#fixcopy-panel').isVisible(), false);
-  assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('fixcopy:' + location.pathname)).edits[0].s), 1);
+  assert.equal(await p.locator('#fixwords-panel').isVisible(), false);
+  assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('fixwords:' + location.pathname)).edits[0].s), 1);
   await done(p);
 });
 

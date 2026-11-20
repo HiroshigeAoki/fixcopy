@@ -1,7 +1,7 @@
 // Wording edits, saved locally and shared as a plain-text report.
 (function () {
-  if (window.__fixcopy) return;
-  window.__fixcopy = true;
+  if (window.__fixwords) return;
+  window.__fixwords = true;
   var STRINGS = {
   "ja": {
     "startIdle": "✎ 文言を直す",
@@ -95,7 +95,7 @@
   }
 };
   function boot() {
-  var meta = document.querySelector('meta[name="fixcopy"]');
+  var meta = document.querySelector('meta[name="fixwords"]');
   var config = {};
   try {
     var parsed = JSON.parse(meta ? meta.getAttribute("content") || "" : "");
@@ -112,8 +112,8 @@
       return values && values[name] !== undefined ? values[name] : match;
     });
   }
-  var KEY = "fixcopy:" + location.pathname;
-  var SKIP = "script, style, noscript, textarea, select, #fixcopy-bar, #fixcopy-panel, #fixcopy-handle, #fixcopy-svg-input, [data-no-edit]";
+  var KEY = "fixwords:" + location.pathname;
+  var SKIP = "script, style, noscript, textarea, select, #fixwords-bar, #fixwords-panel, #fixwords-handle, #fixwords-svg-input, [data-no-edit]";
   if (typeof config.skip === "string" && config.skip.trim()) {
     try {
       document.querySelector(config.skip);
@@ -167,7 +167,7 @@
   var headings = [];
   var totals = [Object.create(null), Object.create(null)];
   Array.prototype.forEach.call(document.body.querySelectorAll("*"), function (node) {
-    if (/^H[1-6]$/.test(node.nodeName) && !node.closest("#fixcopy-bar, #fixcopy-panel")) {
+    if (/^H[1-6]$/.test(node.nodeName) && !node.closest("#fixwords-bar, #fixwords-panel")) {
       headings.push(node);
     }
     if (node.closest(SKIP)) return;
@@ -256,32 +256,32 @@
   function unsent() { return changes().length > 0 && hash(report()) !== sent; }
   var css = document.createElement("style");
   css.textContent =
-    "#fixcopy-svg-input,#fixcopy-bar,#fixcopy-panel,#fixcopy-handle{--surface:#fff;--ink:#191d22;--edge:rgba(25,29,34,.24);--accent:#0b6e66;--accent-ink:#fff;--amber:#b45309;--muted:#535b65;box-sizing:border-box;position:fixed;right:14px;bottom:14px;z-index:2147483000;background:var(--surface);color:var(--ink);border:1px solid var(--edge);box-shadow:0 4px 24px rgba(0,0,0,.28);font:500 15px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif}" +
-    "#fixcopy-bar,#fixcopy-panel{width:min(440px,calc(100vw - 28px));padding:12px;border-radius:16px;opacity:0;transform:translateY(8px);transition:opacity 200ms cubic-bezier(.23,1,.32,1),transform 200ms cubic-bezier(.23,1,.32,1)}" +
-    "#fixcopy-bar[data-visible],#fixcopy-panel[data-visible]{opacity:1;transform:translateY(0)}" +
-    "#fixcopy-bar button,#fixcopy-panel button,#fixcopy-handle{box-sizing:border-box;min-width:44px;min-height:44px;font:inherit;border:0;border-radius:10px;background:transparent;color:inherit;padding:8px 12px;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform 120ms cubic-bezier(.23,1,.32,1)}" +
-    "#fixcopy-bar button:active,#fixcopy-panel button:active,#fixcopy-handle:active{transform:scale(.97)}" +
-    "#fixcopy-bar button:focus-visible,#fixcopy-panel button:focus-visible,#fixcopy-panel textarea:focus-visible,#fixcopy-handle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}" +
-    "#fixcopy-bar [hidden],#fixcopy-panel [hidden],#fixcopy-bar[hidden],#fixcopy-panel[hidden],#fixcopy-handle[hidden]{display:none!important}" +
-    "#fixcopy-header,#fixcopy-secondary,#fixcopy-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}#fixcopy-header{flex-wrap:nowrap}#fixcopy-title{font-weight:600}" +
-    "#fixcopy-guide{margin:4px 0 12px}#fixcopy-guide strong{display:block;margin-top:6px}#fixcopy-status{color:var(--muted);margin:8px 0;transition:opacity 200ms cubic-bezier(.23,1,.32,1)}" +
-    "#fixcopy-status[data-state=unsent]{color:var(--amber)}#fixcopy-status[data-state=sent]{color:var(--accent)}#fixcopy-status[data-state=unsent]:before{content:'● ';}#fixcopy-status[data-state=sent]:before{content:'✓ ';}" +
-    "#fixcopy-bar #fixcopy-send{width:100%;min-height:48px;background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:600}#fixcopy-bar #fixcopy-send[aria-disabled=true]{background:var(--edge);color:var(--muted)}" +
-    "#fixcopy-bar[data-idle]{width:auto;height:44px;padding:0;border-radius:999px}#fixcopy-bar[data-idle] #fixcopy-title{padding:0 12px;font-weight:500}" +
-    "#fixcopy-handle{width:48px;height:48px;padding:0;border-radius:50%;opacity:1;background:var(--accent);color:var(--accent-ink);font-size:20px;border-color:var(--surface)}#fixcopy-bar[data-sheet]{display:none}#fixcopy-badge{position:absolute;right:-6px;top:-8px;min-width:22px;padding:1px 4px;border-radius:12px;background:var(--amber);color:var(--surface);font-size:12px}" +
-    "#fixcopy-panel{overflow-y:auto;overscroll-behavior:contain}#fixcopy-note{white-space:pre-line;overflow-wrap:anywhere}#fixcopy-note[data-mode=copied]:first-line{font-size:20px;font-weight:600}" +
-    "#fixcopy-panel textarea{box-sizing:border-box;display:block;width:100%;font:400 16px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif;margin:12px 0;padding:8px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical;overflow:auto}" +
-    "body.fixcopy-editing [data-fixcopy-editable]{outline:1px dashed #e0a200;outline-offset:3px}body.fixcopy-editing [data-fixcopy-editable]:focus{outline:2px solid #e0a200;background:rgba(224,162,0,.14)}body.fixcopy-editing [data-fixcopy-changed]{box-shadow:inset 0 -3px 0 #e0a200}body.fixcopy-show-changes [data-fixcopy-changed]{background:rgba(255,214,10,.55);outline:2px solid #e0a200;outline-offset:2px;color:#000}" +
-    "@media(prefers-color-scheme:dark){#fixcopy-svg-input,#fixcopy-bar,#fixcopy-panel,#fixcopy-handle{--surface:#1f2329;--ink:#f2f4f6;--edge:rgba(242,244,246,.3);--accent:#35b3a7;--accent-ink:#191d22;--amber:#fbbf24;--muted:#bdc4cd}}" +
-    "@media(hover:hover) and (pointer:fine){#fixcopy-bar button:hover,#fixcopy-panel button:hover,#fixcopy-handle:hover{box-shadow:inset 0 0 0 2px var(--accent)}body.fixcopy-editing [data-fixcopy-editable]{cursor:text}}" +
-    "@media(max-width:600px){#fixcopy-bar:not([data-idle]),#fixcopy-panel{right:0;bottom:0;width:100%;border-radius:16px 16px 0 0;padding-bottom:max(12px,env(safe-area-inset-bottom,0px));padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}}" +
-    ".fixcopy-box{fill:none;stroke:#e0a200;stroke-dasharray:3 2;vector-effect:non-scaling-stroke;pointer-events:none}.fixcopy-box.changed{fill:rgba(224,162,0,.16);stroke-dasharray:none}" +
-    "#fixcopy-svg-input{position:absolute;right:auto;bottom:auto;z-index:2147482999;font-size:16px;min-height:44px;padding:8px;border:2px solid #e0a200;border-radius:8px;margin:0}" +
-    "@media print{.fixcopy-box,#fixcopy-svg-input{display:none!important}}" +
-    "@media(prefers-reduced-motion:reduce){#fixcopy-bar,#fixcopy-panel,#fixcopy-bar button,#fixcopy-panel button,#fixcopy-handle,#fixcopy-status{transition:none}}";
+    "#fixwords-svg-input,#fixwords-bar,#fixwords-panel,#fixwords-handle{--surface:#fff;--ink:#191d22;--edge:rgba(25,29,34,.24);--accent:#0b6e66;--accent-ink:#fff;--amber:#b45309;--muted:#535b65;box-sizing:border-box;position:fixed;right:14px;bottom:14px;z-index:2147483000;background:var(--surface);color:var(--ink);border:1px solid var(--edge);box-shadow:0 4px 24px rgba(0,0,0,.28);font:500 15px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif}" +
+    "#fixwords-bar,#fixwords-panel{width:min(440px,calc(100vw - 28px));padding:12px;border-radius:16px;opacity:0;transform:translateY(8px);transition:opacity 200ms cubic-bezier(.23,1,.32,1),transform 200ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixwords-bar[data-visible],#fixwords-panel[data-visible]{opacity:1;transform:translateY(0)}" +
+    "#fixwords-bar button,#fixwords-panel button,#fixwords-handle{box-sizing:border-box;min-width:44px;min-height:44px;font:inherit;border:0;border-radius:10px;background:transparent;color:inherit;padding:8px 12px;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform 120ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixwords-bar button:active,#fixwords-panel button:active,#fixwords-handle:active{transform:scale(.97)}" +
+    "#fixwords-bar button:focus-visible,#fixwords-panel button:focus-visible,#fixwords-panel textarea:focus-visible,#fixwords-handle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}" +
+    "#fixwords-bar [hidden],#fixwords-panel [hidden],#fixwords-bar[hidden],#fixwords-panel[hidden],#fixwords-handle[hidden]{display:none!important}" +
+    "#fixwords-header,#fixwords-secondary,#fixwords-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}#fixwords-header{flex-wrap:nowrap}#fixwords-title{font-weight:600}" +
+    "#fixwords-guide{margin:4px 0 12px}#fixwords-guide strong{display:block;margin-top:6px}#fixwords-status{color:var(--muted);margin:8px 0;transition:opacity 200ms cubic-bezier(.23,1,.32,1)}" +
+    "#fixwords-status[data-state=unsent]{color:var(--amber)}#fixwords-status[data-state=sent]{color:var(--accent)}#fixwords-status[data-state=unsent]:before{content:'● ';}#fixwords-status[data-state=sent]:before{content:'✓ ';}" +
+    "#fixwords-bar #fixwords-send{width:100%;min-height:48px;background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:600}#fixwords-bar #fixwords-send[aria-disabled=true]{background:var(--edge);color:var(--muted)}" +
+    "#fixwords-bar[data-idle]{width:auto;height:44px;padding:0;border-radius:999px}#fixwords-bar[data-idle] #fixwords-title{padding:0 12px;font-weight:500}" +
+    "#fixwords-handle{width:48px;height:48px;padding:0;border-radius:50%;opacity:1;background:var(--accent);color:var(--accent-ink);font-size:20px;border-color:var(--surface)}#fixwords-bar[data-sheet]{display:none}#fixwords-badge{position:absolute;right:-6px;top:-8px;min-width:22px;padding:1px 4px;border-radius:12px;background:var(--amber);color:var(--surface);font-size:12px}" +
+    "#fixwords-panel{overflow-y:auto;overscroll-behavior:contain}#fixwords-note{white-space:pre-line;overflow-wrap:anywhere}#fixwords-note[data-mode=copied]:first-line{font-size:20px;font-weight:600}" +
+    "#fixwords-panel textarea{box-sizing:border-box;display:block;width:100%;font:400 16px/1.5 'Hiragino Sans','Yu Gothic','Noto Sans CJK JP',sans-serif;margin:12px 0;padding:8px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical;overflow:auto}" +
+    "body.fixwords-editing [data-fixwords-editable]{outline:1px dashed #e0a200;outline-offset:3px}body.fixwords-editing [data-fixwords-editable]:focus{outline:2px solid #e0a200;background:rgba(224,162,0,.14)}body.fixwords-editing [data-fixwords-changed]{box-shadow:inset 0 -3px 0 #e0a200}body.fixwords-show-changes [data-fixwords-changed]{background:rgba(255,214,10,.55);outline:2px solid #e0a200;outline-offset:2px;color:#000}" +
+    "@media(prefers-color-scheme:dark){#fixwords-svg-input,#fixwords-bar,#fixwords-panel,#fixwords-handle{--surface:#1f2329;--ink:#f2f4f6;--edge:rgba(242,244,246,.3);--accent:#35b3a7;--accent-ink:#191d22;--amber:#fbbf24;--muted:#bdc4cd}}" +
+    "@media(hover:hover) and (pointer:fine){#fixwords-bar button:hover,#fixwords-panel button:hover,#fixwords-handle:hover{box-shadow:inset 0 0 0 2px var(--accent)}body.fixwords-editing [data-fixwords-editable]{cursor:text}}" +
+    "@media(max-width:600px){#fixwords-bar:not([data-idle]),#fixwords-panel{right:0;bottom:0;width:100%;border-radius:16px 16px 0 0;padding-bottom:max(12px,env(safe-area-inset-bottom,0px));padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}}" +
+    ".fixwords-box{fill:none;stroke:#e0a200;stroke-dasharray:3 2;vector-effect:non-scaling-stroke;pointer-events:none}.fixwords-box.changed{fill:rgba(224,162,0,.16);stroke-dasharray:none}" +
+    "#fixwords-svg-input{position:absolute;right:auto;bottom:auto;z-index:2147482999;font-size:16px;min-height:44px;padding:8px;border:2px solid #e0a200;border-radius:8px;margin:0}" +
+    "@media print{.fixwords-box,#fixwords-svg-input{display:none!important}}" +
+    "@media(prefers-reduced-motion:reduce){#fixwords-bar,#fixwords-panel,#fixwords-bar button,#fixwords-panel button,#fixwords-handle,#fixwords-status{transition:none}}";
   document.head.appendChild(css);
   function element(tag, id, parent, label) {
-    var node = document.createElement(tag); if (id) node.id = "fixcopy-" + id;
+    var node = document.createElement(tag); if (id) node.id = "fixwords-" + id;
     if (label) node.textContent = label; if (parent) parent.appendChild(node); return node;
   }
   function button(label, parent, id) { var b = element("button", id, parent, label); b.type = "button"; return b; }
@@ -354,7 +354,7 @@
       if (![b.x, b.y, b.width, b.height].every(isFinite) || (!b.width && !b.height) ||
           (!anchor.hasAttribute("transform") && getComputedStyle(anchor).transform !== "none")) return;
       var box = document.createElementNS(SVG, "rect");
-      box.setAttribute("class", "fixcopy-box" + (changed ? " changed" : ""));
+      box.setAttribute("class", "fixwords-box" + (changed ? " changed" : ""));
       box.setAttribute("x", b.x - 4); box.setAttribute("y", b.y - 2);
       box.setAttribute("width", Math.max(24, b.width + 8)); box.setAttribute("height", Math.max(12, b.height + 4));
       box.setAttribute("rx", "3");
@@ -366,8 +366,8 @@
     items.forEach(function (it) {
       var changed = text(it.node) !== it.original;
       if (it.svg) markSvg(it, changed);
-      if (changed) it.node.setAttribute("data-fixcopy-changed", "");
-      else it.node.removeAttribute("data-fixcopy-changed");
+      if (changed) it.node.setAttribute("data-fixwords-changed", "");
+      else it.node.removeAttribute("data-fixwords-changed");
     });
   }
   var svgInput = null, svgItem = null;
@@ -419,11 +419,11 @@
   function setEditing(on) {
     if (!on) finishSvg(false, false);
     editing = on;
-    document.body.classList.toggle("fixcopy-editing", on);
+    document.body.classList.toggle("fixwords-editing", on);
     items.forEach(function (it) {
       // SVG labels are not contenteditable; they open the floating input instead.
       var attrs = it.svg ? { tabindex: "0", role: "button" } : { contenteditable: "plaintext-only" };
-      attrs["data-fixcopy-editable"] = "";
+      attrs["data-fixwords-editable"] = "";
       // The page's own tabindex and role on a label come back when editing ends.
       if (on && it.svg) it.own = { tabindex: it.node.getAttribute("tabindex"), role: it.node.getAttribute("role") };
       if (!on && it.svg && !it.own) return;
@@ -438,12 +438,12 @@
   function hideSheet(restoreFocus) {
     var wasOpen = !panel.hidden;
     bar.removeAttribute("data-sheet"); panel.hidden = true; panel.removeAttribute("data-visible");
-    document.body.classList.remove("fixcopy-show-changes"); render();
+    document.body.classList.remove("fixwords-show-changes"); render();
     if (wasOpen && restoreFocus === true) send.focus();
   }
   function showSheet(value) {
     sheetText = value; area.value = value; bar.setAttribute("data-sheet", ""); reveal(panel);
-    document.body.classList.add("fixcopy-show-changes"); mark(); layout();
+    document.body.classList.add("fixwords-show-changes"); mark(); layout();
     var changed = changes();
     if (changed.length) changed[0].node.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
   }
@@ -498,15 +498,15 @@
   start.addEventListener("click", function () { if (!editing) setEditing(true); });
   toggle.addEventListener("click", function () { setEditing(!editing); });
   document.addEventListener("input", function (e) {
-    if (e.target.hasAttribute && e.target.hasAttribute("data-fixcopy-editable")) { hideSheet(); persist(); mark(); }
+    if (e.target.hasAttribute && e.target.hasAttribute("data-fixwords-editable")) { hideSheet(); persist(); mark(); }
   });
   document.addEventListener("focusout", function (e) {
     var it = items.filter(function (x) { return x.node === e.target; })[0];
-    if (it && !it.svg && document.body.classList.contains("fixcopy-editing")) { write(it.node, read(it.node).replace(/\n+$/, "")); persist(); mark(); }
+    if (it && !it.svg && document.body.classList.contains("fixwords-editing")) { write(it.node, read(it.node).replace(/\n+$/, "")); persist(); mark(); }
   });
   // Links and buttons must not fire while their label is being edited.
   document.addEventListener("click", function (e) {
-    if (document.body.classList.contains("fixcopy-editing") && e.target.closest("[data-fixcopy-editable]") && e.target.closest("a,button")) e.preventDefault();
+    if (document.body.classList.contains("fixwords-editing") && e.target.closest("[data-fixwords-editable]") && e.target.closest("a,button")) e.preventDefault();
   }, true);
   send.addEventListener("click", function () {
     finishSvg(false, false);
